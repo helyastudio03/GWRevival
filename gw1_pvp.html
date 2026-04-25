@@ -272,16 +272,18 @@ function addHex(target, name, duration, game) {
 }
 
 // damage formula: armor reduction (GW1-like)
+// Higher armor = lower multiplier = less damage taken
 function calcPhysDmg(attacker, target, lo, hi) {
   const raw = rnd(lo, hi);
-  const armor = target.armor - (attacker.armorPen || 0);
+  const armor = Math.max(0, target.armor - (attacker.armorPen || 0));
   return Math.max(1, Math.round(raw * Math.pow(0.5, (armor - 60) / 40)));
 }
 
 function calcSpellDmg(attacker, target, lo, hi) {
   const raw = rnd(lo, hi) + (attacker.spellBonus || 0);
-  const armor = target.armor * 0.5; // spells ignore part of armor
-  return Math.max(1, Math.round(raw * Math.pow(0.5, (armor - 60) / 40)));
+  // Spells use target's armor but only 20% of bonus above 60 applies
+  const effectiveArmor = 60 + (target.armor - 60) * 0.2;
+  return Math.max(1, Math.round(raw * Math.pow(0.5, (effectiveArmor - 60) / 40)));
 }
 
 function dealDmg(attacker, target, dmg, type, game) {
@@ -720,28 +722,28 @@ const RESSIG = {
 // ── BUILDS ────────────────────────────────────────────────────────
 const BUILDS = {
   warrior: {
-    name:'Guerrier / Élémentaliste', color:'#e74', radius:18,
-    maxHp:480, maxEnergy:25, energyRegen:2, armor:80, speed:100,
-    minDmg:22, maxDmg:32, attackRange:130, attackSpeed:1.33,
+    classKey:'warrior', name:'Guerrier / Élémentaliste', color:'#e8873a', radius:18,
+    maxHp:560, maxEnergy:25, energyRegen:2, armor:88, speed:100,
+    minDmg:20, maxDmg:28, attackRange:130, attackSpeed:1.33,
     skills:['w_auto','w_eviscerate','w_gash','w_bullsstrike','w_frenzy','w_sprint','w_shock','w_ressig']
   },
   monk: {
-    name:'Moine / Guerrier', color:'#8f8', radius:16,
-    maxHp:300, maxEnergy:30, energyRegen:4, armor:60, speed:100,
+    classKey:'monk', name:'Moine / Guerrier', color:'#88ffcc', radius:16,
+    maxHp:480, maxEnergy:30, energyRegen:4, armor:70, speed:100,
     minDmg:10, maxDmg:15, attackRange:130, attackSpeed:1.0,
-    healBonus:20,
+    healBonus:25,
     skills:['w_auto','mo_woh','mo_heal','mo_orison','mo_removecond','mo_protspirit','mo_guardian','w_ressig']
   },
   elementalist: {
-    name:'Élémentaliste / Mage', color:'#f8a', radius:16,
-    maxHp:300, maxEnergy:45, energyRegen:4, armor:60, speed:100,
+    classKey:'elementalist', name:'Élémentaliste / Mage', color:'#ff88aa', radius:16,
+    maxHp:420, maxEnergy:45, energyRegen:4, armor:65, speed:100,
     minDmg:8, maxDmg:12, attackRange:600, attackSpeed:0.8,
     spellBonus:15,
     skills:['e_flare','e_fireball','e_firestorm','e_lightning','e_iceprism','e_gale','e_blizzard','w_ressig']
   },
   mesmer: {
-    name:'Illusionniste / Nécromant', color:'#a8f', radius:16,
-    maxHp:330, maxEnergy:40, energyRegen:4, armor:60, speed:100,
+    classKey:'mesmer', name:'Illusionniste / Nécromant', color:'#cc88ff', radius:16,
+    maxHp:450, maxEnergy:40, energyRegen:4, armor:65, speed:100,
     minDmg:8, maxDmg:12, attackRange:500, attackSpeed:0.8,
     spellBonus:10,
     skills:['e_flare','me_interrupt','me_energysurge','me_imaginedhaste','me_empathy','me_backfire','me_nightmare','w_ressig']
@@ -752,12 +754,12 @@ const BUILDS = {
 const ALLY_BUILDS = {
   ally_monk: {
     ...BUILDS.monk,
-    name:'Kira (Moine)', color:'#4e4',
+    classKey:'monk', name:'Kira (Moine)', color:'#88ffcc',
     skills:['w_auto','mo_woh','mo_heal','mo_orison','mo_removecond','mo_protspirit','mo_guardian','w_ressig']
   },
   ally_ele: {
     ...BUILDS.elementalist,
-    name:'Zara (Élémentaliste)', color:'#f4b',
+    classKey:'elementalist', name:'Zara (Élémentaliste)', color:'#ff88aa',
     skills:['e_flare','e_fireball','e_blizzard','e_lightning','e_iceprism','e_gale','e_firestorm','w_ressig']
   },
 };
@@ -766,23 +768,23 @@ const ALLY_BUILDS = {
 const ENEMY_BUILDS = {
   e_warrior: {
     ...BUILDS.warrior,
-    name:'Guerrier Ennemi', color:'#e44',
+    classKey:'warrior', name:'Guerrier Ennemi', color:'#e8873a',
     skills:['w_auto','w_eviscerate','w_gash','w_bullsstrike','w_frenzy','w_sprint','w_shock','w_healsig']
   },
   e_monk: {
     ...BUILDS.monk,
-    name:'Moine Ennemi', color:'#f88',
+    classKey:'monk', name:'Moine Ennemi', color:'#88ffcc',
     skills:['w_auto','mo_woh','mo_heal','mo_orison','mo_removecond','mo_protspirit','mo_guardian','w_ressig']
   },
   e_ranger: {
-    name:'Rôdeur Ennemi', color:'#ca4', radius:17,
-    maxHp:380, maxEnergy:25, energyRegen:3, armor:70, speed:100,
-    minDmg:18, maxDmg:26, attackRange:350, attackSpeed:1.0,
+    classKey:'ranger', name:'Rôdeur Ennemi', color:'#cccc44', radius:17,
+    maxHp:460, maxEnergy:25, energyRegen:3, armor:75, speed:100,
+    minDmg:16, maxDmg:22, attackRange:350, attackSpeed:1.0,
     skills:['w_auto','w_eviscerate','w_bullsstrike','w_sprint','w_shock','mo_removecond','w_healsig','w_ressig']
   },
   e_necro: {
-    name:'Nécromant Ennemi', color:'#a66', radius:16,
-    maxHp:340, maxEnergy:35, energyRegen:4, armor:60, speed:100,
+    classKey:'necro', name:'Nécromant Ennemi', color:'#aa6688', radius:16,
+    maxHp:420, maxEnergy:35, energyRegen:4, armor:65, speed:100,
     minDmg:8, maxDmg:12, attackRange:500, attackSpeed:0.8,
     spellBonus:10,
     skills:['e_flare','me_empathy','me_nightmare','me_backfire','me_spiteful','me_imaginedhaste','me_energysurge','w_ressig']
@@ -1203,6 +1205,85 @@ function update(dt) {
 const canvas = document.getElementById('arena');
 const ctx = canvas.getContext('2d');
 
+// ── CLASS SYMBOLS ─────────────────────────────────────────────────
+function drawClassSymbol(ctx, x, y, r, classKey) {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+  ctx.fillStyle   = 'rgba(255,255,255,0.9)';
+  ctx.lineWidth   = 1.8;
+  ctx.lineCap     = 'round';
+  ctx.lineJoin    = 'round';
+  const s = r * 0.42;
+  switch (classKey) {
+    case 'warrior': {
+      // Two diagonal crossing lines (crossed swords)
+      ctx.beginPath(); ctx.moveTo(x-s, y-s); ctx.lineTo(x+s, y+s); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x+s, y-s); ctx.lineTo(x-s, y+s); ctx.stroke();
+      // Guard crossbars
+      const g = s*0.35;
+      ctx.beginPath(); ctx.moveTo(x-g, y-g*0.8); ctx.lineTo(x+g, y-g*0.8); ctx.stroke();
+      break;
+    }
+    case 'monk': {
+      // Bold cross (+)
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(x, y-s); ctx.lineTo(x, y+s); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x-s, y); ctx.lineTo(x+s, y); ctx.stroke();
+      break;
+    }
+    case 'elementalist': {
+      // Diamond with inner sparkle
+      ctx.beginPath();
+      ctx.moveTo(x, y-s); ctx.lineTo(x+s*0.65, y); ctx.lineTo(x, y+s); ctx.lineTo(x-s*0.65, y);
+      ctx.closePath(); ctx.stroke();
+      // Centre dot
+      ctx.beginPath(); ctx.arc(x, y, s*0.18, 0, Math.PI*2); ctx.fill();
+      break;
+    }
+    case 'mesmer': {
+      // Flowing spiral
+      ctx.beginPath();
+      for (let i = 0; i <= 24; i++) {
+        const t  = (i / 24) * Math.PI * 3;
+        const rr = (i / 24) * s;
+        const px = x + Math.cos(t) * rr;
+        const py = y + Math.sin(t) * rr;
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+      break;
+    }
+    case 'ranger': {
+      // Arrow pointing right →
+      ctx.beginPath(); ctx.moveTo(x-s, y); ctx.lineTo(x+s*0.6, y); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x+s*0.6, y); ctx.lineTo(x+s*0.15, y-s*0.45);
+      ctx.moveTo(x+s*0.6, y); ctx.lineTo(x+s*0.15, y+s*0.45);
+      ctx.stroke();
+      // Bow arc on left
+      ctx.beginPath(); ctx.arc(x-s*0.7, y, s*0.55, -Math.PI*0.55, Math.PI*0.55); ctx.stroke();
+      break;
+    }
+    case 'necro': {
+      // Skull: circle head + two eye dots + jaw line
+      const hr = s * 0.52;
+      ctx.beginPath(); ctx.arc(x, y - s*0.1, hr, 0, Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x - s*0.22, y - s*0.15, s*0.11, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x + s*0.22, y - s*0.15, s*0.11, 0, Math.PI*2); ctx.fill();
+      // Teeth
+      ctx.beginPath(); ctx.moveTo(x - s*0.35, y + s*0.35); ctx.lineTo(x + s*0.35, y + s*0.35); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - s*0.12, y + s*0.38); ctx.lineTo(x - s*0.12, y + s*0.6); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x + s*0.12, y + s*0.38); ctx.lineTo(x + s*0.12, y + s*0.6); ctx.stroke();
+      break;
+    }
+    default: {
+      // Fallback: simple dot
+      ctx.beginPath(); ctx.arc(x, y, s*0.3, 0, Math.PI*2); ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
 function render() {
   ctx.clearRect(0, 0, AW, AH);
 
@@ -1291,16 +1372,26 @@ function render() {
       ctx.restore();
     }
 
-    // Body
+    // Body — team base color (blue = ally, red = enemy)
+    const teamFill   = c.team === TEAM_ALLY ? '#12264a' : '#4a1212';
+    const teamRing   = c.team === TEAM_ALLY ? '#4af'    : '#f44';
+    const playerRing = '#ffe066';
     ctx.save();
-    if (isPlayer) { ctx.shadowColor = '#fff'; ctx.shadowBlur = 12; }
-    ctx.fillStyle = c.color;
+    if (isPlayer) { ctx.shadowColor = '#ffe066'; ctx.shadowBlur = 18; }
+    ctx.fillStyle = teamFill;
     ctx.beginPath(); ctx.arc(c.x, c.y, c.radius, 0, Math.PI*2); ctx.fill();
-    // Team border
-    ctx.strokeStyle = c.team === TEAM_ALLY ? '#6f6' : '#f44';
-    ctx.lineWidth = isPlayer ? 3 : 2;
+    // Class-color tinted inner disc
+    ctx.globalAlpha = 0.55;
+    ctx.fillStyle = c.color;
+    ctx.beginPath(); ctx.arc(c.x, c.y, c.radius - 3, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1;
+    // Outer ring (team color, gold for player)
+    ctx.strokeStyle = isPlayer ? playerRing : teamRing;
+    ctx.lineWidth   = isPlayer ? 3 : 2;
     ctx.beginPath(); ctx.arc(c.x, c.y, c.radius, 0, Math.PI*2); ctx.stroke();
     ctx.restore();
+    // Class symbol (white icon drawn on top)
+    drawClassSymbol(ctx, c.x, c.y, c.radius, c.classKey);
 
     // Knockdown indicator
     if (hasCond(c, 'knockdown')) {
@@ -1330,8 +1421,8 @@ function render() {
     ctx.fillStyle = '#222'; ctx.fillRect(bx, by + 6, barW, 3);
     ctx.fillStyle = '#44b'; ctx.fillRect(bx, by + 6, barW * enPct, 3);
 
-    // Name
-    ctx.fillStyle = isPlayer ? '#fff' : (c.team === TEAM_ALLY ? '#8f8' : '#f88');
+    // Name — blue for allies, red for enemies, gold for player
+    ctx.fillStyle = isPlayer ? '#ffe066' : (c.team === TEAM_ALLY ? '#7bcfff' : '#ff7777');
     ctx.font = `${isPlayer ? 'bold ' : ''}10px sans-serif`;
     ctx.textAlign = 'center';
     ctx.fillText(c.name, c.x, c.y - c.radius - 17);
