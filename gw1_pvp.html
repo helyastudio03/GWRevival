@@ -1,0 +1,1538 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Guild Wars PvP Prototype</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #0d0d1a;
+  color: #ddd;
+  font-family: 'Segoe UI', monospace;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  padding: 8px;
+  user-select: none;
+}
+h1 { color: #c8a000; font-size: 1.1em; margin-bottom: 6px; letter-spacing: 3px; text-transform: uppercase; }
+
+#class-select { margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+#class-select label { font-size: 12px; color: #aaa; }
+#class-select select {
+  background: #222; color: #ddd; border: 1px solid #555;
+  padding: 4px 8px; font-size: 13px; cursor: pointer; border-radius: 3px;
+}
+#start-btn {
+  background: #6a4; color: #fff; border: none;
+  padding: 5px 18px; font-size: 13px; cursor: pointer; border-radius: 4px;
+}
+#start-btn:hover { background: #7b5; }
+
+#game-container { display: flex; gap: 8px; }
+
+#arena-wrap { position: relative; }
+canvas#arena { border: 2px solid #444; cursor: crosshair; display: block; }
+
+#overlay {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  display: none; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.75); font-size: 32px; font-weight: bold;
+  flex-direction: column; gap: 12px;
+}
+#overlay-sub { font-size: 14px; color: #aaa; }
+#restart-btn {
+  background: #6a4; color: #fff; border: none;
+  padding: 6px 20px; font-size: 14px; cursor: pointer; border-radius: 4px; margin-top: 4px;
+}
+
+#right-panel { width: 190px; display: flex; flex-direction: column; gap: 6px; }
+
+#team-panel { background: rgba(0,0,0,0.6); border: 1px solid #444; padding: 6px; border-radius: 3px; }
+.section-title { font-size: 10px; color: #666; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+.party-row { margin-bottom: 7px; }
+.party-name { font-size: 11px; color: #bbb; margin-bottom: 2px; }
+.bar-row { display: flex; gap: 2px; flex-direction: column; }
+.mini-bar { height: 7px; background: #2a2a2a; border-radius: 2px; overflow: hidden; margin-bottom: 1px; }
+.mini-bar-fill { height: 100%; border-radius: 2px; transition: width 0.15s; }
+.mini-conds { display: flex; gap: 2px; flex-wrap: wrap; margin-top: 1px; }
+.mini-cond { width: 7px; height: 7px; border-radius: 50%; }
+
+#combat-log { background: rgba(0,0,0,0.6); border: 1px solid #444; padding: 6px; border-radius: 3px; flex: 1; overflow: hidden; }
+#log-entries { height: 200px; overflow-y: auto; font-size: 10px; line-height: 1.45; }
+.log-dmg  { color: #f88; }
+.log-heal { color: #8f8; }
+.log-cond { color: #fa8; }
+.log-hex  { color: #c8f; }
+.log-sys  { color: #888; }
+
+#bottom-ui { margin-top: 6px; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+
+#info-row { display: flex; gap: 10px; align-items: flex-start; }
+
+#player-bars { display: flex; flex-direction: column; gap: 3px; }
+.bar-group { display: flex; flex-direction: column; gap: 1px; }
+.bar-label { font-size: 9px; color: #666; }
+.bar-track {
+  width: 180px; height: 13px; background: #222;
+  border: 1px solid #444; border-radius: 3px; overflow: hidden; position: relative;
+}
+.bar-fill { height: 100%; transition: width 0.1s; border-radius: 2px; }
+.bar-val {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; color: #fff;
+}
+#hp-fill      { background: #4a4; }
+#energy-fill  { background: #44b; }
+#cast-fill    { background: #a84; }
+#cast-group   { display: none; }
+
+#player-conds { display: flex; gap: 3px; flex-wrap: wrap; max-width: 180px; }
+.cond-badge {
+  padding: 1px 5px; border-radius: 3px; font-size: 9px;
+  color: #fff; white-space: nowrap;
+}
+
+#target-box {
+  width: 185px; background: rgba(0,0,0,0.6); border: 1px solid #555;
+  padding: 6px; border-radius: 3px;
+}
+#target-name { font-size: 12px; color: #fc0; margin-bottom: 3px; }
+#target-hp-track { width: 100%; height: 10px; background: #2a2a2a; border-radius: 2px; overflow: hidden; margin-bottom: 2px; }
+#target-hp-fill { height: 100%; background: #e44; transition: width 0.15s; }
+#target-conds { display: flex; gap: 2px; flex-wrap: wrap; margin-top: 2px; }
+
+#skillbar { display: flex; gap: 3px; padding: 6px 8px; background: rgba(0,0,0,0.7); border: 1px solid #555; border-radius: 5px; }
+.skill-slot {
+  width: 56px; height: 56px; background: #1e1e2e;
+  border: 2px solid #555; border-radius: 4px;
+  cursor: pointer; position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  overflow: hidden; transition: border-color 0.1s;
+}
+.skill-slot:hover { border-color: #888; }
+.skill-slot.active { border-color: #fc0; box-shadow: 0 0 6px #fc08; }
+.skill-slot.no-energy { border-color: #44b; }
+.skill-icon { font-size: 18px; line-height: 1; }
+.skill-name-txt { font-size: 6.5px; color: #aaa; text-align: center; padding: 0 2px; line-height: 1.2; margin-top: 2px; max-width: 52px; }
+.skill-cost-txt { position: absolute; bottom: 2px; left: 3px; font-size: 9px; color: #88f; }
+.skill-key-txt  { position: absolute; top: 2px; left: 3px; font-size: 9px; color: #666; }
+.skill-cd-overlay {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.72); display: none;
+  align-items: center; justify-content: center;
+  font-size: 13px; color: #fc0; font-weight: bold;
+}
+.skill-slot.on-cd .skill-cd-overlay { display: flex; }
+.skill-toggle-active { border-color: #f80 !important; background: #2a1800 !important; }
+
+#hint { font-size: 9px; color: #444; text-align: center; }
+</style>
+</head>
+<body>
+<h1>⚔ Guild Wars — PvP Prototype ⚔</h1>
+
+<div id="class-select">
+  <label>Classe :</label>
+  <select id="class-picker">
+    <option value="warrior">Warrior / Élémentaliste</option>
+    <option value="monk">Moine / Guerrier</option>
+    <option value="elementalist">Élémentaliste / Mage</option>
+    <option value="mesmer">Illusionniste / Nécromant</option>
+  </select>
+  <button id="start-btn" onclick="startGame()">▶ Lancer</button>
+</div>
+
+<div id="game-container">
+  <div id="arena-wrap">
+    <canvas id="arena" width="700" height="500"></canvas>
+    <div id="overlay">
+      <div id="overlay-msg"></div>
+      <div id="overlay-sub"></div>
+      <button id="restart-btn" onclick="startGame()">↺ Rejouer</button>
+    </div>
+  </div>
+  <div id="right-panel">
+    <div id="team-panel">
+      <div class="section-title">Équipe Alliée</div>
+      <div id="party-list"></div>
+    </div>
+    <div id="combat-log">
+      <div class="section-title">Journal de Combat</div>
+      <div id="log-entries"></div>
+    </div>
+  </div>
+</div>
+
+<div id="bottom-ui">
+  <div id="info-row">
+    <div id="player-bars">
+      <div class="bar-group">
+        <div class="bar-label">❤ VIE</div>
+        <div class="bar-track"><div id="hp-fill" class="bar-fill" style="width:100%"></div><div class="bar-val" id="hp-val">480 / 480</div></div>
+      </div>
+      <div class="bar-group">
+        <div class="bar-label">✦ ÉNERGIE</div>
+        <div class="bar-track"><div id="energy-fill" class="bar-fill" style="width:100%"></div><div class="bar-val" id="energy-val">30 / 30</div></div>
+      </div>
+      <div class="bar-group" id="cast-group">
+        <div class="bar-label">⏳ INCANTATION</div>
+        <div class="bar-track"><div id="cast-fill" class="bar-fill" style="width:0%"></div><div class="bar-val" id="cast-val"></div></div>
+      </div>
+      <div id="player-conds"></div>
+    </div>
+    <div id="target-box">
+      <div id="target-name">— Aucune cible —</div>
+      <div id="target-hp-track"><div id="target-hp-fill" style="width:0%"></div></div>
+      <div id="target-conds"></div>
+    </div>
+  </div>
+  <div id="skillbar"></div>
+  <div id="hint">ZQSD / WASD : Déplacer &nbsp;|&nbsp; Clic gauche : Cibler &nbsp;|&nbsp; 1–8 : Compétences &nbsp;|&nbsp; Tab : Cible suivante &nbsp;|&nbsp; Espace : Auto-attaque</div>
+</div>
+
+<script>
+// ================================================================
+// GUILD WARS 1 — PvP PROTOTYPE
+// ================================================================
+
+// ── CONSTANTES ──────────────────────────────────────────────────
+const AW = 700, AH = 500;
+const TEAM_ALLY = 0, TEAM_ENEMY = 1;
+
+const COND = {
+  bleeding:  { label:'Hémorragie', color:'#f33', dps:3 },
+  burning:   { label:'Brûlure',    color:'#f80', dps:7 },
+  poison:    { label:'Poison',     color:'#4a4', dps:4 },
+  crippled:  { label:'Estropié',   color:'#a6f', speedMult:0.5 },
+  weakness:  { label:'Faiblesse',  color:'#880', atkMult:0.34 },
+  blind:     { label:'Cécité',     color:'#666', missChance:0.9 },
+  deepwound: { label:'Bl. Profonde',color:'#900', maxHpMult:0.8 },
+  knockdown: { label:'À Terre',    color:'#fc0' },
+};
+
+const ENCH = {
+  sprint:             { label:'Sprint',        color:'#8ff', speedBonus:0.33 },
+  frenzy:             { label:'Frénésie',      color:'#f80', atkMult:2.0, recvMult:2.0 },
+  protective_spirit:  { label:'Esp. Protec.',  color:'#0ff', capPct:0.10 },
+  guardian:           { label:'Gardien',       color:'#88f', blockChance:0.5 },
+  divine_intervention:{ label:'Interv. Div.',  color:'#ff8', absorbLethal:true },
+};
+
+const HEX = {
+  imagined_haste:    { label:'Hâte Imaginaire', color:'#0af', speedMult:0.5 },
+  empathy:           { label:'Empathie',         color:'#f0a', dmgOnAtk:20 },
+  backfire:          { label:'Retour de Flamme', color:'#f44', dmgOnSpell:60 },
+  conjure_nightmare: { label:'Cauchemar',        color:'#a0f', dps:7, energyDrain:2 },
+  spiteful_spirit:   { label:'Esp. Rancunier',   color:'#080', dmgOnAction:30 },
+  parasitic_bond:    { label:'Lien Parasitaire', color:'#4a4', dps:4 },
+};
+
+// ── HELPERS ──────────────────────────────────────────────────────
+function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function rnd(lo, hi) { return lo + Math.random() * (hi - lo); }
+function rndInt(lo, hi) { return Math.floor(rnd(lo, hi + 1)); }
+
+function isEnemy(a, b) { return a.team !== b.team; }
+function isAlly(a, b)  { return a.team === b.team && a !== b; }
+
+function hasCond(c, name)  { return !!c.conditions[name]; }
+function hasEnch(c, name)  { return !!c.enchantments[name]; }
+function hasHex(c, name)   { return !!c.hexes[name]; }
+
+function getTeam(game, team)   { return game.chars.filter(c => c.team === team && c.alive); }
+function getEnemies(c, game)   { return getTeam(game, c.team === TEAM_ALLY ? TEAM_ENEMY : TEAM_ALLY); }
+function getAllies(c, game)     { return game.chars.filter(x => x.team === c.team && x !== c && x.alive); }
+
+function addCond(target, name, duration, game) {
+  if (!target.alive) return;
+  const prev = target.conditions[name];
+  target.conditions[name] = { duration: prev ? Math.max(prev.duration, duration) : duration };
+  const lbl = COND[name]?.label || name;
+  if (!prev) game.log(`${target.name} → ${lbl}`, 'log-cond');
+}
+
+function addEnch(target, name, duration, game) {
+  if (!target.alive) return;
+  target.enchantments[name] = { duration };
+  game.log(`${target.name} ← ${ENCH[name]?.label || name}`, 'log-heal');
+}
+
+function removeEnch(target, name, game) {
+  delete target.enchantments[name];
+}
+
+function addHex(target, name, duration, game) {
+  if (!target.alive) return;
+  target.hexes[name] = { duration, data: HEX[name] };
+  game.log(`${target.name} ← maléfice: ${HEX[name]?.label || name}`, 'log-hex');
+}
+
+// damage formula: armor reduction (GW1-like)
+function calcPhysDmg(attacker, target, lo, hi) {
+  const raw = rnd(lo, hi);
+  const armor = target.armor - (attacker.armorPen || 0);
+  return Math.max(1, Math.round(raw * Math.pow(0.5, (armor - 60) / 40)));
+}
+
+function calcSpellDmg(attacker, target, lo, hi) {
+  const raw = rnd(lo, hi) + (attacker.spellBonus || 0);
+  const armor = target.armor * 0.5; // spells ignore part of armor
+  return Math.max(1, Math.round(raw * Math.pow(0.5, (armor - 60) / 40)));
+}
+
+function dealDmg(attacker, target, dmg, type, game) {
+  if (!target.alive) return;
+
+  // Protective Spirit: cap single hit at 10% maxHp
+  if (hasEnch(target, 'protective_spirit')) {
+    dmg = Math.min(dmg, Math.floor(target.maxHp * 0.10));
+  }
+  // Guardian: 50% block for physical
+  if (type === 'physique' && hasEnch(target, 'guardian') && Math.random() < 0.5) {
+    game.log(`${target.name} bloque l'attaque !`, 'log-sys');
+    return;
+  }
+  // Frenzy: double damage received
+  if (hasEnch(target, 'frenzy')) dmg = Math.floor(dmg * 2);
+
+  // Divine Intervention: absorb lethal hit
+  if (target.hp - dmg <= 0 && hasEnch(target, 'divine_intervention')) {
+    delete target.enchantments['divine_intervention'];
+    target.hp = 1;
+    game.log(`${target.name} survit grâce à Intervention Divine !`, 'log-heal');
+    spawnFx(game, target.x, target.y, '#ff8', 70, 0.8);
+    return;
+  }
+
+  target.hp -= dmg;
+  game.log(`${target.name} -${dmg} (${type})`, 'log-dmg');
+  spawnFx(game, target.x, target.y, '#f44', 25, 0.3);
+
+  if (target.hp <= 0) {
+    target.hp = 0;
+    target.alive = false;
+    target.conditions = {}; target.enchantments = {}; target.hexes = {};
+    target.casting = null;
+    game.log(`☠ ${target.name} est mort !`, 'log-sys');
+    spawnFx(game, target.x, target.y, '#f008', 80, 1.0);
+  }
+}
+
+function spawnFx(game, x, y, color, radius, duration) {
+  game.effects.push({ x, y, color, radius, maxR: radius, duration, timer: 0 });
+}
+
+function spawnProjectile(game, src, tx, ty, color, speed, onArrive) {
+  game.projectiles.push({ x: src.x, y: src.y, tx, ty, color, speed, onArrive, done: false });
+}
+
+// ── SKILL DEFINITIONS ────────────────────────────────────────────
+const SK = {
+
+  // ═══ WARRIOR ═══
+  w_auto: {
+    name:'Auto-Attaque', icon:'⚔️', cost:0, cast:0, recharge:0, range:130,
+    isToggle:true,
+    desc:'Attaque de base au corps-à-corps',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me, tgt) || dist(me,tgt) > 150) return;
+      if (hasCond(me,'blind') && Math.random() < 0.9) { g.log(`${me.name} rate (Cécité)`, 'log-sys'); return; }
+      let dmg = calcPhysDmg(me, tgt, me.minDmg, me.maxDmg);
+      if (hasCond(me,'weakness')) dmg = Math.floor(dmg * 0.34);
+      if (hasHex(me,'empathy')) dealDmg(me, me, me.hexes.empathy.data.dmgOnAtk||20, 'maléfice', g);
+      dealDmg(me, tgt, dmg, 'physique', g);
+    }
+  },
+  w_eviscerate: {
+    name:'Éviscération', icon:'🗡️', cost:5, cast:0, recharge:10, range:130,
+    desc:'Attaque +20 dmg + Hémorragie',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt) || dist(me,tgt) > 150) return;
+      if (hasCond(me,'blind') && Math.random() < 0.9) { g.log(`${me.name} rate (Cécité)`, 'log-sys'); return; }
+      let dmg = calcPhysDmg(me, tgt, me.minDmg+18, me.maxDmg+22);
+      dealDmg(me, tgt, dmg, 'physique', g);
+      addCond(tgt, 'bleeding', 15, g);
+      if (hasHex(me,'empathy')) dealDmg(me, me, 20, 'maléfice', g);
+    }
+  },
+  w_gash: {
+    name:'Entaille', icon:'✂️', cost:4, cast:0, recharge:5, range:130,
+    desc:'Si la cible saigne → Blessure Profonde',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt) || dist(me,tgt) > 150) return;
+      if (hasCond(me,'blind') && Math.random() < 0.9) return;
+      let dmg = calcPhysDmg(me, tgt, me.minDmg+5, me.maxDmg+10);
+      dealDmg(me, tgt, dmg, 'physique', g);
+      if (hasCond(tgt,'bleeding')) addCond(tgt, 'deepwound', 15, g);
+      if (hasHex(me,'empathy')) dealDmg(me, me, 20, 'maléfice', g);
+    }
+  },
+  w_bullsstrike: {
+    name:"Charge du Taureau", icon:'🐂', cost:5, cast:0, recharge:8, range:130,
+    desc:'Renverse si la cible se déplace',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt) || dist(me,tgt) > 150) return;
+      if (hasCond(me,'blind') && Math.random() < 0.9) return;
+      let dmg = calcPhysDmg(me, tgt, me.minDmg+8, me.maxDmg+12);
+      dealDmg(me, tgt, dmg, 'physique', g);
+      if (tgt.isMoving) { addCond(tgt, 'knockdown', 2, g); g.log(`${tgt.name} est renversé !`, 'log-cond'); }
+      if (hasHex(me,'empathy')) dealDmg(me, me, 20, 'maléfice', g);
+    }
+  },
+  w_sprint: {
+    name:'Sprint', icon:'💨', cost:5, cast:0, recharge:20,
+    desc:'+33% vitesse 14s',
+    use(me, tgt, g) { addEnch(me, 'sprint', 14, g); }
+  },
+  w_frenzy: {
+    name:'Frénésie', icon:'😤', cost:5, cast:0, recharge:0, isToggle:true,
+    desc:'×2 vitesse attaque, ×2 dégâts reçus',
+    use(me, tgt, g) {
+      if (hasEnch(me,'frenzy')) { removeEnch(me,'frenzy',g); g.log(`${me.name} désactive Frénésie`,'log-sys'); }
+      else { addEnch(me,'frenzy',9999,g); }
+    }
+  },
+  w_shock: {
+    name:'Choc', icon:'⚡', cost:10, cast:0, recharge:15, range:140,
+    desc:'Renverse + interrompt (sort)',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt) || dist(me,tgt) > 160) return;
+      addCond(tgt, 'knockdown', 2, g);
+      if (tgt.casting) { tgt.casting = null; tgt.castTimer = 0; g.log(`${me.name} interrompt ${tgt.name} !`, 'log-hex'); }
+      if (hasHex(me,'spiteful_spirit')) dealDmg(me, me, 30, 'maléfice', g);
+      spawnFx(g, tgt.x, tgt.y, '#fc0', 60, 0.4);
+    }
+  },
+  w_cyclone: {
+    name:'Hache Cyclone', icon:'🌀', cost:5, cast:0, recharge:5,
+    desc:'Frappe tous les ennemis adjacents',
+    use(me, tgt, g) {
+      let hit = 0;
+      for (const e of getEnemies(me, g)) {
+        if (dist(me, e) < 160) { let d = calcPhysDmg(me, e, me.minDmg, me.maxDmg+5); dealDmg(me, e, d, 'physique', g); hit++; }
+      }
+      spawnFx(g, me.x, me.y, '#f80', 160, 0.5);
+      if (hasHex(me,'empathy') && hit > 0) dealDmg(me, me, 20, 'maléfice', g);
+    }
+  },
+  w_healsig: {
+    name:'Signet de Guérison', icon:'🤲', cost:0, cast:2, recharge:4,
+    desc:'Soin de soi 82 PV',
+    use(me, tgt, g) {
+      const h = 82 + (me.healBonus||0);
+      me.hp = Math.min(me.maxHp, me.hp + h);
+      g.log(`${me.name} se soigne de ${h} PV`, 'log-heal');
+      spawnFx(g, me.x, me.y, '#8f8', 50, 0.5);
+    }
+  },
+  w_ressig: {
+    name:'Signet de Résurrection', icon:'✨', cost:0, cast:3, recharge:0, oneUse:true,
+    desc:'Ressuscite un allié (25% PV)',
+    use(me, tgt, g) {
+      const dead = g.chars.find(c => c.team === me.team && !c.alive);
+      if (!dead) { g.log('Aucun allié mort', 'log-sys'); return; }
+      dead.alive = true; dead.hp = Math.floor(dead.maxHp * 0.25);
+      dead.energy = Math.floor(dead.maxEnergy * 0.10);
+      dead.conditions = {}; dead.hexes = {}; dead.enchantments = {};
+      dead.x = clamp(me.x + rnd(-50,50), 20, AW-20);
+      dead.y = clamp(me.y + rnd(-50,50), 20, AH-20);
+      g.log(`${dead.name} ressuscité !`, 'log-heal');
+      spawnFx(g, dead.x, dead.y, '#fff', 80, 1.0);
+    }
+  },
+
+  // ═══ MONK ═══
+  mo_woh: {
+    name:'Parole de Guérison', icon:'💊', cost:5, cast:0.25, recharge:3, isHeal:true,
+    desc:'Soin instantané 80-120 PV (bonus si PV bas)',
+    use(me, tgt, g) {
+      const t = (tgt && !isEnemy(me,tgt)) ? tgt : me;
+      let h = 80 + (me.healBonus||0);
+      if (t.hp / t.maxHp < 0.5) h = Math.floor(h * 1.5);
+      t.hp = Math.min(t.maxHp, t.hp + h);
+      g.log(`${me.name} soigne ${t.name} de ${h} PV`, 'log-heal');
+      spawnFx(g, t.x, t.y, '#8ff', 45, 0.5);
+    }
+  },
+  mo_heal: {
+    name:'Prière de Guérison', icon:'💚', cost:5, cast:1, recharge:2, isHeal:true,
+    desc:'Soigne 90 PV',
+    use(me, tgt, g) {
+      const t = (tgt && !isEnemy(me,tgt)) ? tgt : me;
+      const h = 90 + (me.healBonus||0);
+      t.hp = Math.min(t.maxHp, t.hp + h);
+      g.log(`${me.name} soigne ${t.name} de ${h} PV`, 'log-heal');
+      spawnFx(g, t.x, t.y, '#8f8', 50, 0.6);
+    }
+  },
+  mo_orison: {
+    name:'Oraison de Guérison', icon:'🙏', cost:4, cast:0.75, recharge:2, isHeal:true,
+    desc:'Soigne 60 PV',
+    use(me, tgt, g) {
+      const t = (tgt && !isEnemy(me,tgt)) ? tgt : me;
+      const h = 60 + (me.healBonus||0);
+      t.hp = Math.min(t.maxHp, t.hp + h);
+      g.log(`${me.name} soigne ${t.name} de ${h}`, 'log-heal');
+      spawnFx(g, t.x, t.y, '#8f8', 35, 0.4);
+    }
+  },
+  mo_removecond: {
+    name:'Suppression d\'État', icon:'🧿', cost:5, cast:0.25, recharge:2, isHeal:true,
+    desc:'Supprime 2 conditions',
+    use(me, tgt, g) {
+      const t = (tgt && !isEnemy(me,tgt)) ? tgt : me;
+      let n = 0;
+      for (const c of ['burning','bleeding','poison','crippled','weakness','blind','deepwound']) {
+        if (t.conditions[c] && n < 2) { delete t.conditions[c]; n++; }
+      }
+      g.log(`${t.name}: ${n} condition(s) supprimée(s)`, 'log-heal');
+      spawnFx(g, t.x, t.y, '#ff8', 40, 0.4);
+    }
+  },
+  mo_protspirit: {
+    name:'Esprit Protecteur', icon:'🛡️', cost:10, cast:1, recharge:5, isHeal:true,
+    desc:'Dégâts max = 10% PVM (10s)',
+    use(me, tgt, g) {
+      const t = (tgt && !isEnemy(me,tgt)) ? tgt : me;
+      addEnch(t, 'protective_spirit', 10, g);
+      spawnFx(g, t.x, t.y, '#0ff', 55, 0.8);
+    }
+  },
+  mo_guardian: {
+    name:'Gardien', icon:'🔵', cost:5, cast:0.5, recharge:2, isHeal:true,
+    desc:'50% chance de bloquer (5s)',
+    use(me, tgt, g) {
+      const t = (tgt && !isEnemy(me,tgt)) ? tgt : me;
+      addEnch(t, 'guardian', 5, g);
+      spawnFx(g, t.x, t.y, '#88f', 50, 0.6);
+    }
+  },
+  mo_divine: {
+    name:'Intervention Divine', icon:'☀️', cost:10, cast:0.5, recharge:8, isHeal:true,
+    desc:'Absorbe la prochaine attaque létale',
+    use(me, tgt, g) {
+      const t = (tgt && !isEnemy(me,tgt)) ? tgt : me;
+      addEnch(t, 'divine_intervention', 20, g);
+      spawnFx(g, t.x, t.y, '#ff8', 60, 0.8);
+    }
+  },
+
+  // ═══ ÉLÉMENTALISTE ═══
+  e_flare: {
+    name:'Embrasement', icon:'✨', cost:5, cast:1, recharge:0, range:500,
+    desc:'Sort de feu rapide (~65 dégâts)',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      if (hasHex(me,'backfire')) dealDmg(me, me, 60, 'maléfice', g);
+      if (hasHex(me,'spiteful_spirit')) dealDmg(me, me, 30, 'maléfice', g);
+      spawnProjectile(g, me, tgt.x, tgt.y, '#f80', 380, () => {
+        if (!tgt.alive) return;
+        const d = calcSpellDmg(me, tgt, 55, 75);
+        dealDmg(me, tgt, d, 'feu', g);
+      });
+    }
+  },
+  e_fireball: {
+    name:'Boule de Feu', icon:'🔥', cost:10, cast:2, recharge:7, range:500,
+    desc:'AoE feu 100-120 dégâts (r=150)',
+    use(me, tgt, g) {
+      if (!tgt) return;
+      if (hasHex(me,'backfire')) dealDmg(me, me, 60, 'maléfice', g);
+      if (hasHex(me,'spiteful_spirit')) dealDmg(me, me, 30, 'maléfice', g);
+      const tx = tgt.x, ty = tgt.y;
+      g.log(`${me.name} lance Boule de Feu !`, 'log-dmg');
+      spawnProjectile(g, me, tx, ty, '#f60', 300, () => {
+        spawnFx(g, tx, ty, '#f40', 150, 0.9);
+        for (const e of getEnemies(me, g)) {
+          if (dist({x:tx,y:ty}, e) < 150) {
+            const d = calcSpellDmg(me, e, 100, 120);
+            dealDmg(me, e, d, 'feu', g);
+            if (Math.random() < 0.3) addCond(e, 'burning', 4, g);
+          }
+        }
+      });
+    }
+  },
+  e_firestorm: {
+    name:'Tempête de Feu', icon:'🌋', cost:15, cast:2, recharge:30, range:500,
+    desc:'Zone de feu 10s (25-35/s)',
+    use(me, tgt, g) {
+      if (!tgt) return;
+      if (hasHex(me,'backfire')) dealDmg(me, me, 60, 'maléfice', g);
+      if (hasHex(me,'spiteful_spirit')) dealDmg(me, me, 30, 'maléfice', g);
+      const tx = tgt.x, ty = tgt.y;
+      g.log(`${me.name} invoque Tempête de Feu !`, 'log-dmg');
+      g.aoeZones.push({ x:tx, y:ty, radius:120, color:'#f60', alpha:0.28,
+        duration:10, timer:0, tickInterval:1, tickTimer:0, caster:me,
+        tick(zone, gg) {
+          spawnFx(gg, tx + rnd(-80,80), ty + rnd(-80,80), '#f80', 20, 0.3);
+          for (const e of getEnemies(me, gg)) {
+            if (dist({x:tx,y:ty}, e) < 120) {
+              const d = calcSpellDmg(me, e, 25, 35); dealDmg(me, e, d, 'feu', gg);
+            }
+          }
+        }
+      });
+    }
+  },
+  e_lightning: {
+    name:'Frappe de Foudre', icon:'⚡', cost:10, cast:1, recharge:5, range:500,
+    desc:'~90 dégâts air',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      if (hasHex(me,'backfire')) dealDmg(me, me, 60, 'maléfice', g);
+      if (hasHex(me,'spiteful_spirit')) dealDmg(me, me, 30, 'maléfice', g);
+      spawnProjectile(g, me, tgt.x, tgt.y, '#ff0', 600, () => {
+        if (!tgt.alive) return;
+        const d = calcSpellDmg(me, tgt, 80, 100);
+        dealDmg(me, tgt, d, 'foudre', g);
+        spawnFx(g, tgt.x, tgt.y, '#ff0', 60, 0.5);
+      });
+    }
+  },
+  e_iceprism: {
+    name:'Prisme de Glace', icon:'💎', cost:10, cast:1.5, recharge:8, range:500,
+    desc:'50-70 dégâts froid + Estropié 6s',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      if (hasHex(me,'backfire')) dealDmg(me, me, 60, 'maléfice', g);
+      const d = calcSpellDmg(me, tgt, 50, 70);
+      dealDmg(me, tgt, d, 'froid', g);
+      addCond(tgt, 'crippled', 6, g);
+      spawnFx(g, tgt.x, tgt.y, '#aef', 60, 0.6);
+    }
+  },
+  e_blizzard: {
+    name:'Blizzard', icon:'❄️', cost:15, cast:2, recharge:30, range:500,
+    desc:'AoE froid 10s: dégâts + Estropié',
+    use(me, tgt, g) {
+      if (!tgt) return;
+      if (hasHex(me,'backfire')) dealDmg(me, me, 60, 'maléfice', g);
+      const tx = tgt.x, ty = tgt.y;
+      g.log(`${me.name} invoque Blizzard !`, 'log-dmg');
+      g.aoeZones.push({ x:tx, y:ty, radius:150, color:'#aef', alpha:0.22,
+        duration:10, timer:0, tickInterval:1, tickTimer:0, caster:me,
+        tick(zone, gg) {
+          for (const e of getEnemies(me, gg)) {
+            if (dist({x:tx,y:ty}, e) < 150) {
+              const d = calcSpellDmg(me, e, 18, 26); dealDmg(me, e, d, 'froid', gg);
+              addCond(e, 'crippled', 3, gg);
+            }
+          }
+        }
+      });
+    }
+  },
+  e_gale: {
+    name:'Bourrasque', icon:'🌬️', cost:10, cast:0.25, recharge:20, range:500,
+    desc:'Renverse la cible',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      if (hasHex(me,'backfire')) dealDmg(me, me, 60, 'maléfice', g);
+      addCond(tgt, 'knockdown', 2, g);
+      spawnFx(g, tgt.x, tgt.y, '#8ff', 70, 0.6);
+      g.log(`${me.name} renverse ${tgt.name} (Bourrasque) !`, 'log-dmg');
+    }
+  },
+
+  // ═══ MESMER ═══
+  me_interrupt: {
+    name:'Interruption', icon:'🔇', cost:5, cast:0, recharge:8, range:500,
+    desc:'Interrompt l\'incantation ennemie',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      if (tgt.casting) { tgt.casting = null; tgt.castTimer = 0; dealDmg(me, tgt, 15, 'mental', g); g.log(`${me.name} interrompt ${tgt.name} !`, 'log-hex'); }
+      else g.log(`${tgt.name} n\'incante pas`, 'log-sys');
+    }
+  },
+  me_energysurge: {
+    name:'Surtension d\'Énergie', icon:'💫', cost:10, cast:2, recharge:20, range:500,
+    desc:'Draine 30 énergie + dégâts',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      if (hasHex(me,'backfire')) dealDmg(me, me, 60, 'maléfice', g);
+      const drain = Math.min(30, tgt.energy);
+      tgt.energy -= drain;
+      const d = drain * 2;
+      dealDmg(me, tgt, d, 'mental', g);
+      g.log(`${me.name} draine ${drain} énergie de ${tgt.name}`, 'log-hex');
+      spawnFx(g, tgt.x, tgt.y, '#a0f', 60, 0.6);
+    }
+  },
+  me_imaginedhaste: {
+    name:'Hâte Imaginaire', icon:'🏃', cost:10, cast:1, recharge:20, range:500,
+    desc:'Maléfice: vitesse ×0.5 pendant 10s',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      if (hasHex(me,'backfire')) dealDmg(me, me, 60, 'maléfice', g);
+      addHex(tgt, 'imagined_haste', 10, g);
+    }
+  },
+  me_empathy: {
+    name:'Empathie', icon:'💔', cost:10, cast:1, recharge:15, range:500,
+    desc:'Maléfice: 20 dégâts à chaque attaque',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      if (hasHex(me,'backfire')) dealDmg(me, me, 60, 'maléfice', g);
+      addHex(tgt, 'empathy', 10, g);
+    }
+  },
+  me_backfire: {
+    name:'Retour de Flamme', icon:'💥', cost:15, cast:1, recharge:20, range:500,
+    desc:'Maléfice: 60 dégâts par sort lancé',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      if (hasHex(me,'backfire')) dealDmg(me, me, 60, 'maléfice', g);
+      addHex(tgt, 'backfire', 10, g);
+    }
+  },
+  me_nightmare: {
+    name:'Cauchemar Conjuré', icon:'😱', cost:10, cast:2, recharge:20, range:500,
+    desc:'Maléfice: 7 dégâts/s + 2 énergie/s drainée',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      if (hasHex(me,'backfire')) dealDmg(me, me, 60, 'maléfice', g);
+      addHex(tgt, 'conjure_nightmare', 8, g);
+    }
+  },
+  me_spiteful: {
+    name:'Esprit Rancunier', icon:'👻', cost:15, cast:2, recharge:20, range:500,
+    desc:'Maléfice: 30 dégâts à chaque action',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      if (hasHex(me,'backfire')) dealDmg(me, me, 60, 'maléfice', g);
+      addHex(tgt, 'spiteful_spirit', 15, g);
+    }
+  },
+};
+
+// Ressig partagé pour tous
+const RESSIG = {
+  name:'Signet de Résurrection', icon:'✨', cost:0, cast:3, recharge:0, oneUse:true,
+  desc:'Ressuscite un allié (25% PV)',
+  use: SK.w_ressig.use
+};
+
+// ── BUILDS ────────────────────────────────────────────────────────
+const BUILDS = {
+  warrior: {
+    name:'Guerrier / Élémentaliste', color:'#e74', radius:18,
+    maxHp:480, maxEnergy:25, energyRegen:2, armor:80, speed:100,
+    minDmg:22, maxDmg:32, attackRange:130, attackSpeed:1.33,
+    skills:['w_auto','w_eviscerate','w_gash','w_bullsstrike','w_frenzy','w_sprint','w_shock','w_ressig']
+  },
+  monk: {
+    name:'Moine / Guerrier', color:'#8f8', radius:16,
+    maxHp:300, maxEnergy:30, energyRegen:4, armor:60, speed:100,
+    minDmg:10, maxDmg:15, attackRange:130, attackSpeed:1.0,
+    healBonus:20,
+    skills:['w_auto','mo_woh','mo_heal','mo_orison','mo_removecond','mo_protspirit','mo_guardian','w_ressig']
+  },
+  elementalist: {
+    name:'Élémentaliste / Mage', color:'#f8a', radius:16,
+    maxHp:300, maxEnergy:45, energyRegen:4, armor:60, speed:100,
+    minDmg:8, maxDmg:12, attackRange:600, attackSpeed:0.8,
+    spellBonus:15,
+    skills:['e_flare','e_fireball','e_firestorm','e_lightning','e_iceprism','e_gale','e_blizzard','w_ressig']
+  },
+  mesmer: {
+    name:'Illusionniste / Nécromant', color:'#a8f', radius:16,
+    maxHp:330, maxEnergy:40, energyRegen:4, armor:60, speed:100,
+    minDmg:8, maxDmg:12, attackRange:500, attackSpeed:0.8,
+    spellBonus:10,
+    skills:['e_flare','me_interrupt','me_energysurge','me_imaginedhaste','me_empathy','me_backfire','me_nightmare','w_ressig']
+  },
+};
+
+// Builds IA alliés
+const ALLY_BUILDS = {
+  ally_monk: {
+    ...BUILDS.monk,
+    name:'Kira (Moine)', color:'#4e4',
+    skills:['w_auto','mo_woh','mo_heal','mo_orison','mo_removecond','mo_protspirit','mo_guardian','w_ressig']
+  },
+  ally_ele: {
+    ...BUILDS.elementalist,
+    name:'Zara (Élémentaliste)', color:'#f4b',
+    skills:['e_flare','e_fireball','e_blizzard','e_lightning','e_iceprism','e_gale','e_firestorm','w_ressig']
+  },
+};
+
+// Builds IA ennemis
+const ENEMY_BUILDS = {
+  e_warrior: {
+    ...BUILDS.warrior,
+    name:'Guerrier Ennemi', color:'#e44',
+    skills:['w_auto','w_eviscerate','w_gash','w_bullsstrike','w_frenzy','w_sprint','w_shock','w_healsig']
+  },
+  e_monk: {
+    ...BUILDS.monk,
+    name:'Moine Ennemi', color:'#f88',
+    skills:['w_auto','mo_woh','mo_heal','mo_orison','mo_removecond','mo_protspirit','mo_guardian','w_ressig']
+  },
+  e_ranger: {
+    name:'Rôdeur Ennemi', color:'#ca4', radius:17,
+    maxHp:380, maxEnergy:25, energyRegen:3, armor:70, speed:100,
+    minDmg:18, maxDmg:26, attackRange:350, attackSpeed:1.0,
+    skills:['w_auto','w_eviscerate','w_bullsstrike','w_sprint','w_shock','mo_removecond','w_healsig','w_ressig']
+  },
+  e_necro: {
+    name:'Nécromant Ennemi', color:'#a66', radius:16,
+    maxHp:340, maxEnergy:35, energyRegen:4, armor:60, speed:100,
+    minDmg:8, maxDmg:12, attackRange:500, attackSpeed:0.8,
+    spellBonus:10,
+    skills:['e_flare','me_empathy','me_nightmare','me_backfire','me_spiteful','me_imaginedhaste','me_energysurge','w_ressig']
+  },
+};
+
+// ── CREATION DE PERSONNAGE ──────────────────────────────────────
+function makeChar(build, team, x, y, isPlayer) {
+  return {
+    ...build,
+    team, x, y, isPlayer: !!isPlayer,
+    hp: build.maxHp, energy: build.maxEnergy,
+    conditions: {}, enchantments: {}, hexes: {},
+    alive: true, isMoving: false,
+    moveTarget: null, target: null,
+    autoAttack: false, attackTimer: 0,
+    casting: null, castTimer: 0,
+    skillCooldowns: new Array(8).fill(0),
+    usedOneUse: new Array(8).fill(false),
+    aiTimer: 0,
+    velocity: 0,
+  };
+}
+
+// ── ÉTAT DU JEU ──────────────────────────────────────────────────
+const game = {
+  chars: [], player: null,
+  effects: [], projectiles: [], aoeZones: [],
+  running: false, over: false,
+  logLines: [],
+  log(msg, cls = 'log-sys') {
+    this.logLines.push({ msg, cls });
+    if (this.logLines.length > 80) this.logLines.shift();
+    const el = document.getElementById('log-entries');
+    if (el) {
+      const d = document.createElement('div');
+      d.className = 'log-entry ' + cls;
+      d.textContent = msg;
+      el.appendChild(d);
+      while (el.children.length > 60) el.removeChild(el.firstChild);
+      el.scrollTop = el.scrollHeight;
+    }
+  }
+};
+
+// ── INPUT ─────────────────────────────────────────────────────────
+const keys = {};
+document.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (!game.running || !game.player) return;
+  const p = game.player;
+  // skills 1-8
+  const idx = ['Digit1','Digit2','Digit3','Digit4','Digit5','Digit6','Digit7','Digit8'].indexOf(e.code);
+  if (idx >= 0) { e.preventDefault(); useSkill(p, idx); return; }
+  // Tab: cycle targets
+  if (e.code === 'Tab') { e.preventDefault(); cycleTarget(p); return; }
+  // Space: toggle auto-attack
+  if (e.code === 'Space') { e.preventDefault(); p.autoAttack = !p.autoAttack; return; }
+});
+document.addEventListener('keyup', e => { keys[e.code] = false; });
+
+document.getElementById('arena').addEventListener('click', e => {
+  if (!game.running) return;
+  const rect = e.target.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  // find clicked character
+  let hit = null, best = 999;
+  for (const c of game.chars) {
+    if (!c.alive) continue;
+    const d = Math.hypot(c.x - mx, c.y - my);
+    if (d < c.radius + 8 && d < best) { best = d; hit = c; }
+  }
+  if (hit) {
+    game.player.target = hit;
+  } else {
+    game.player.moveTarget = { x: mx, y: my };
+  }
+});
+
+function cycleTarget(p) {
+  const enemies = getEnemies(p, game);
+  if (!enemies.length) return;
+  const cur = enemies.indexOf(p.target);
+  p.target = enemies[(cur + 1) % enemies.length];
+}
+
+// ── USE SKILL ────────────────────────────────────────────────────
+function useSkill(char, idx) {
+  if (!char.alive) return;
+  if (hasCond(char, 'knockdown')) return;
+  const skId = char.skills[idx];
+  if (!skId) return;
+  const sk = SK[skId] || (skId === 'w_ressig' ? SK.w_ressig : null) || (skId === 'w_healsig' ? SK.w_healsig : null);
+  if (!sk) return;
+  if (char.skillCooldowns[idx] > 0) return;
+  if (sk.oneUse && char.usedOneUse[idx]) return;
+  if (char.energy < sk.cost) return;
+  if (char.casting) return; // already casting
+
+  if (sk.cast > 0) {
+    char.casting = { skId, idx, sk, target: char.target };
+    char.castTimer = 0;
+  } else {
+    char.energy -= sk.cost;
+    sk.use(char, char.target, game);
+    startCooldown(char, idx, sk);
+    if (sk.oneUse) char.usedOneUse[idx] = true;
+  }
+}
+
+function startCooldown(char, idx, sk) {
+  char.skillCooldowns[idx] = sk.recharge || 0;
+}
+
+function finishCast(char) {
+  const { skId, idx, sk, target } = char.casting;
+  char.casting = null; char.castTimer = 0;
+  char.energy -= sk.cost;
+  sk.use(char, target, game);
+  startCooldown(char, idx, sk);
+  if (sk.oneUse) char.usedOneUse[idx] = true;
+}
+
+// ── MOVE ─────────────────────────────────────────────────────────
+function moveChar(c, dt) {
+  if (!c.alive) return;
+  if (hasCond(c, 'knockdown')) { c.isMoving = false; return; }
+
+  // compute effective speed
+  let spd = c.speed;
+  if (hasCond(c, 'crippled')) spd *= 0.5;
+  if (hasEnch(c, 'sprint'))   spd *= 1.33;
+  if (hasCond(c, 'frenzy'))   {} // frenzy doesn't slow
+  if (hasHex(c, 'imagined_haste')) spd *= (HEX.imagined_haste.speedMult || 0.5);
+
+  let dx = 0, dy = 0;
+  if (c.isPlayer) {
+    const up    = keys['KeyW'] || keys['ArrowUp']    || keys['KeyZ'];
+    const down  = keys['KeyS'] || keys['ArrowDown'];
+    const left  = keys['KeyA'] || keys['ArrowLeft']  || keys['KeyQ'];
+    const right = keys['KeyD'] || keys['ArrowRight'];
+    if (up)    dy -= 1;
+    if (down)  dy += 1;
+    if (left)  dx -= 1;
+    if (right) dx += 1;
+    if (dx !== 0 || dy !== 0) {
+      const len = Math.hypot(dx, dy);
+      dx /= len; dy /= len;
+      c.isMoving = true;
+      c.moveTarget = null;
+    } else if (c.moveTarget) {
+      const mdx = c.moveTarget.x - c.x, mdy = c.moveTarget.y - c.y;
+      const d = Math.hypot(mdx, mdy);
+      if (d < 4) { c.moveTarget = null; c.isMoving = false; }
+      else { dx = mdx / d; dy = mdy / d; c.isMoving = true; }
+    } else {
+      c.isMoving = false;
+    }
+  } else if (c.moveTarget) {
+    const mdx = c.moveTarget.x - c.x, mdy = c.moveTarget.y - c.y;
+    const d = Math.hypot(mdx, mdy);
+    if (d < 4) { c.moveTarget = null; c.isMoving = false; }
+    else { dx = mdx / d; dy = mdy / d; c.isMoving = true; }
+  } else {
+    c.isMoving = false;
+  }
+
+  c.x = clamp(c.x + dx * spd * dt, c.radius, AW - c.radius);
+  c.y = clamp(c.y + dy * spd * dt, c.radius, AH - c.radius);
+}
+
+// ── AI ────────────────────────────────────────────────────────────
+function aiUpdate(c, dt, g) {
+  if (!c.alive || c.isPlayer) return;
+  c.aiTimer -= dt;
+  if (c.aiTimer > 0) return;
+  c.aiTimer = 0.3 + Math.random() * 0.3;
+
+  const allies  = getAllies(c, g).filter(x => x.alive);
+  const enemies = getEnemies(c, g);
+  if (!enemies.length) return;
+
+  // ── Monk AI ──
+  if (c.skills.includes('mo_woh') || c.skills.includes('mo_heal')) {
+    // Find most wounded ally (including self)
+    const team = [c, ...allies];
+    team.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
+    const wounded = team.find(x => x.hp / x.maxHp < 0.85);
+
+    if (wounded) {
+      c.target = wounded;
+      // Stay near wounded ally
+      c.moveTarget = { x: clamp(wounded.x + rnd(-60,60), 30, AW-30), y: clamp(wounded.y + rnd(-60,60), 30, AH-30) };
+
+      // Choose heal skill
+      if (wounded.hp / wounded.maxHp < 0.5) {
+        tryAiSkill(c, 'mo_woh', g);
+      } else if (wounded.hp / wounded.maxHp < 0.75) {
+        if (!tryAiSkill(c, 'mo_heal', g)) tryAiSkill(c, 'mo_orison', g);
+      }
+      // Emergency: divine intervention
+      if (wounded.hp / wounded.maxHp < 0.25) tryAiSkill(c, 'mo_divine', g);
+      // Remove conditions
+      if (Object.keys(wounded.conditions).length > 0) tryAiSkill(c, 'mo_removecond', g);
+      // Protective spirit on low HP
+      if (wounded.hp / wounded.maxHp < 0.4) tryAiSkill(c, 'mo_protspirit', g);
+      return;
+    }
+    // idle: stay near strongest ally
+    const anchor = allies[0] || c;
+    if (dist(c, anchor) > 150) c.moveTarget = { x: anchor.x, y: anchor.y };
+    return;
+  }
+
+  // ── Elementalist / Necromancer AI ──
+  if (c.skills.some(s => s.startsWith('e_') || s.startsWith('me_'))) {
+    // Pick weakest enemy
+    let tgt = enemies.reduce((best, e) => e.hp < best.hp ? e : best, enemies[0]);
+    c.target = tgt;
+    // Keep distance
+    const d = dist(c, tgt);
+    if (d < 250) {
+      const angle = Math.atan2(c.y - tgt.y, c.x - tgt.x);
+      c.moveTarget = { x: clamp(tgt.x + Math.cos(angle) * 320, 30, AW-30), y: clamp(tgt.y + Math.sin(angle) * 320, 30, AH-30) };
+    } else if (d > 420) {
+      c.moveTarget = { x: clamp(tgt.x + rnd(-60,60), 30, AW-30), y: clamp(tgt.y + rnd(-60,60), 30, AH-30) };
+    }
+    // Use skills in priority order
+    const spellSkills = c.skills.filter(s => s.startsWith('e_') || s.startsWith('me_') || s.startsWith('n_'));
+    for (const sk of spellSkills) {
+      if (tryAiSkill(c, sk, g)) break;
+    }
+    return;
+  }
+
+  // ── Warrior / Ranger AI ──
+  let tgt = enemies.reduce((best, e) => e.hp < best.hp ? e : best, enemies[0]);
+  // prefer the player
+  const playerEnemy = enemies.find(e => e.isPlayer);
+  if (playerEnemy && playerEnemy.hp / playerEnemy.maxHp > 0.2) tgt = playerEnemy;
+  c.target = tgt;
+
+  const d = dist(c, tgt);
+  const ar = c.attackRange + 20;
+  if (d > ar) {
+    c.moveTarget = { x: tgt.x + rnd(-20,20), y: tgt.y + rnd(-20,20) };
+  } else {
+    c.moveTarget = null;
+  }
+
+  // self-heal if wounded
+  if (c.hp / c.maxHp < 0.35 && tryAiSkill(c, 'w_healsig', g)) return;
+  // sprint to close gap
+  if (d > 250 && !hasEnch(c,'sprint')) tryAiSkill(c, 'w_sprint', g);
+  // pressure skills
+  if (d <= ar + 30) {
+    tryAiSkill(c, 'w_eviscerate', g) ||
+    tryAiSkill(c, 'w_gash', g) ||
+    tryAiSkill(c, 'w_shock', g) ||
+    tryAiSkill(c, 'w_bullsstrike', g) ||
+    tryAiSkill(c, 'w_cyclone', g);
+  }
+  // auto attack
+  c.autoAttack = d <= ar + 30;
+}
+
+function tryAiSkill(c, skId, g) {
+  const idx = c.skills.indexOf(skId);
+  if (idx < 0) return false;
+  const sk = SK[skId];
+  if (!sk) return false;
+  if (c.skillCooldowns[idx] > 0) return false;
+  if (sk.oneUse && c.usedOneUse[idx]) return false;
+  if (c.energy < sk.cost) return false;
+  if (c.casting) return false;
+  if (hasCond(c, 'knockdown')) return false;
+
+  if (sk.cast > 0) {
+    c.casting = { skId, idx, sk, target: c.target };
+    c.castTimer = 0;
+  } else {
+    c.energy -= sk.cost;
+    sk.use(c, c.target, g);
+    startCooldown(c, idx, sk);
+    if (sk.oneUse) c.usedOneUse[idx] = true;
+  }
+  return true;
+}
+
+// ── UPDATE ────────────────────────────────────────────────────────
+function update(dt) {
+  if (!game.running) return;
+
+  for (const c of game.chars) {
+    if (!c.alive) continue;
+
+    // Conditions tick
+    for (const [name, data] of Object.entries(c.conditions)) {
+      data.duration -= dt;
+      const def = COND[name];
+      if (def && def.dps) {
+        data.dmgAccum = (data.dmgAccum || 0) + def.dps * dt;
+        if (data.dmgAccum >= 1) {
+          const dmg = Math.floor(data.dmgAccum);
+          data.dmgAccum -= dmg;
+          c.hp = Math.max(0, c.hp - dmg);
+          if (c.hp === 0) { c.alive = false; game.log(`☠ ${c.name} succombe à ses blessures !`, 'log-sys'); }
+        }
+      }
+      if (data.duration <= 0) delete c.conditions[name];
+    }
+    if (!c.alive) continue;
+
+    // Hex tick
+    for (const [name, data] of Object.entries(c.hexes)) {
+      data.duration -= dt;
+      const def = data.data || HEX[name];
+      if (def && def.dps) {
+        data.dmgAccum = (data.dmgAccum || 0) + def.dps * dt;
+        if (data.dmgAccum >= 1) {
+          const d = Math.floor(data.dmgAccum); data.dmgAccum -= d;
+          c.hp = Math.max(0, c.hp - d);
+          if (c.hp === 0) { c.alive = false; game.log(`☠ ${c.name} succombe à un maléfice !`, 'log-sys'); }
+        }
+      }
+      if (def && def.energyDrain) {
+        c.energy = Math.max(0, c.energy - def.energyDrain * dt);
+      }
+      if (data.duration <= 0) delete c.hexes[name];
+    }
+    if (!c.alive) continue;
+
+    // Enchantment tick
+    for (const [name, data] of Object.entries(c.enchantments)) {
+      if (data.duration < 9000) { // not permanent
+        data.duration -= dt;
+        if (data.duration <= 0) delete c.enchantments[name];
+      }
+    }
+
+    // Energy regen
+    c.energy = Math.min(c.maxEnergy, c.energy + c.energyRegen * dt);
+
+    // Cooldown tick
+    for (let i = 0; i < c.skillCooldowns.length; i++) {
+      if (c.skillCooldowns[i] > 0) c.skillCooldowns[i] = Math.max(0, c.skillCooldowns[i] - dt);
+    }
+
+    // Casting
+    if (c.casting) {
+      c.castTimer += dt;
+      if (hasCond(c, 'knockdown')) { c.casting = null; c.castTimer = 0; }
+      else if (c.castTimer >= c.casting.sk.cast) finishCast(c);
+    }
+
+    // Auto-attack tick
+    if (c.autoAttack && !c.casting) {
+      let atkSpd = c.attackSpeed;
+      if (hasEnch(c, 'frenzy')) atkSpd *= 2;
+      if (hasCond(c, 'weakness')) atkSpd *= 0.5;
+      c.attackTimer += dt;
+      const interval = 1 / atkSpd;
+      if (c.attackTimer >= interval) {
+        c.attackTimer = 0;
+        const tgt = c.target;
+        if (tgt && tgt.alive && isEnemy(c, tgt)) {
+          if (dist(c, tgt) <= c.attackRange + 20) {
+            SK.w_auto.use(c, tgt, game);
+          } else if (!c.isPlayer) {
+            c.moveTarget = { x: tgt.x, y: tgt.y };
+          }
+        }
+      }
+    }
+
+    // AI
+    if (!c.isPlayer) aiUpdate(c, dt, game);
+
+    // Move
+    moveChar(c, dt);
+  }
+
+  // AOE zones tick
+  for (const z of game.aoeZones) {
+    z.timer += dt;
+    z.tickTimer += dt;
+    if (z.tickTimer >= z.tickInterval) { z.tickTimer = 0; if (z.tick) z.tick(z, game); }
+    if (z.timer >= z.duration) z.done = true;
+  }
+  game.aoeZones = game.aoeZones.filter(z => !z.done);
+
+  // Projectiles
+  for (const proj of game.projectiles) {
+    if (proj.done) continue;
+    const pdx = proj.tx - proj.x, pdy = proj.ty - proj.y;
+    const pd = Math.hypot(pdx, pdy);
+    if (pd < 10) { proj.done = true; proj.onArrive && proj.onArrive(); continue; }
+    proj.x += (pdx / pd) * proj.speed * dt;
+    proj.y += (pdy / pd) * proj.speed * dt;
+  }
+  game.projectiles = game.projectiles.filter(proj => !proj.done);
+
+  // Effects
+  for (const fx of game.effects) {
+    fx.timer += dt;
+    if (fx.timer >= fx.duration) fx.dead = true;
+  }
+  game.effects = game.effects.filter(fx => !fx.dead);
+
+  // Win/lose check
+  const aliveAllies  = game.chars.filter(c => c.team === TEAM_ALLY  && c.alive);
+  const aliveEnemies = game.chars.filter(c => c.team === TEAM_ENEMY && c.alive);
+  if (!aliveAllies.length)  endGame(false);
+  if (!aliveEnemies.length) endGame(true);
+}
+
+// ── RENDER ────────────────────────────────────────────────────────
+const canvas = document.getElementById('arena');
+const ctx = canvas.getContext('2d');
+
+function render() {
+  ctx.clearRect(0, 0, AW, AH);
+
+  // Floor
+  ctx.fillStyle = '#1a1f2e';
+  ctx.fillRect(0, 0, AW, AH);
+  // Grid
+  ctx.strokeStyle = '#1e2336';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < AW; x += 40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,AH); ctx.stroke(); }
+  for (let y = 0; y < AH; y += 40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(AW,y); ctx.stroke(); }
+  // Center line
+  ctx.strokeStyle = '#2a2f3e'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(AW/2, 0); ctx.lineTo(AW/2, AH); ctx.stroke();
+
+  // AOE zones
+  for (const z of game.aoeZones) {
+    const t = z.timer / z.duration;
+    ctx.save();
+    ctx.globalAlpha = (z.alpha || 0.25) * (1 - t * 0.3);
+    ctx.fillStyle = z.color;
+    ctx.beginPath(); ctx.arc(z.x, z.y, z.radius, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = z.color; ctx.lineWidth = 2; ctx.globalAlpha = 0.6;
+    ctx.beginPath(); ctx.arc(z.x, z.y, z.radius, 0, Math.PI*2); ctx.stroke();
+    ctx.restore();
+  }
+
+  // Effects
+  for (const fx of game.effects) {
+    const t = fx.timer / fx.duration;
+    ctx.save();
+    ctx.globalAlpha = (1 - t) * 0.7;
+    ctx.strokeStyle = fx.color; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(fx.x, fx.y, fx.radius * (0.3 + t * 0.7), 0, Math.PI*2); ctx.stroke();
+    ctx.restore();
+  }
+
+  // Projectiles
+  for (const proj of game.projectiles) {
+    ctx.save();
+    ctx.fillStyle = proj.color;
+    ctx.shadowColor = proj.color; ctx.shadowBlur = 8;
+    ctx.beginPath(); ctx.arc(proj.x, proj.y, 5, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  // Characters
+  for (const c of game.chars) {
+    if (!c.alive) {
+      // Dead body
+      ctx.save(); ctx.globalAlpha = 0.25;
+      ctx.fillStyle = '#333';
+      ctx.beginPath(); ctx.arc(c.x, c.y, c.radius, 0, Math.PI*2); ctx.fill();
+      ctx.restore(); continue;
+    }
+
+    const isSelected = game.player && game.player.target === c;
+    const isPlayer   = c.isPlayer;
+
+    // Selection ring
+    if (isSelected) {
+      ctx.save();
+      ctx.strokeStyle = isEnemy(game.player, c) ? '#f00' : '#0f0';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4,4]);
+      ctx.beginPath(); ctx.arc(c.x, c.y, c.radius + 6, 0, Math.PI*2); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+
+    // Enchantment glow
+    if (Object.keys(c.enchantments).length > 0) {
+      ctx.save();
+      ctx.shadowColor = '#0ff'; ctx.shadowBlur = 14; ctx.globalAlpha = 0.5;
+      ctx.strokeStyle = '#0ff'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(c.x, c.y, c.radius + 3, 0, Math.PI*2); ctx.stroke();
+      ctx.restore();
+    }
+
+    // Hex tint
+    if (Object.keys(c.hexes).length > 0) {
+      ctx.save();
+      ctx.shadowColor = '#a0f'; ctx.shadowBlur = 10; ctx.globalAlpha = 0.4;
+      ctx.strokeStyle = '#a0f'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(c.x, c.y, c.radius + 2, 0, Math.PI*2); ctx.stroke();
+      ctx.restore();
+    }
+
+    // Body
+    ctx.save();
+    if (isPlayer) { ctx.shadowColor = '#fff'; ctx.shadowBlur = 12; }
+    ctx.fillStyle = c.color;
+    ctx.beginPath(); ctx.arc(c.x, c.y, c.radius, 0, Math.PI*2); ctx.fill();
+    // Team border
+    ctx.strokeStyle = c.team === TEAM_ALLY ? '#6f6' : '#f44';
+    ctx.lineWidth = isPlayer ? 3 : 2;
+    ctx.beginPath(); ctx.arc(c.x, c.y, c.radius, 0, Math.PI*2); ctx.stroke();
+    ctx.restore();
+
+    // Knockdown indicator
+    if (hasCond(c, 'knockdown')) {
+      ctx.fillStyle = '#fc0'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('⬇', c.x, c.y + 5);
+    }
+
+    // Casting arc
+    if (c.casting) {
+      const prog = c.castTimer / c.casting.sk.cast;
+      ctx.save();
+      ctx.strokeStyle = '#fa0'; ctx.lineWidth = 4; ctx.globalAlpha = 0.8;
+      ctx.beginPath(); ctx.arc(c.x, c.y, c.radius + 8, -Math.PI/2, -Math.PI/2 + prog * Math.PI*2); ctx.stroke();
+      ctx.restore();
+    }
+
+    // HP bar (above)
+    const barW = c.radius * 2 + 4, barH = 5;
+    const bx = c.x - barW/2, by = c.y - c.radius - 14;
+    const hpPct = clamp(c.hp / c.maxHp, 0, 1);
+    ctx.fillStyle = '#222'; ctx.fillRect(bx, by, barW, barH);
+    ctx.fillStyle = hpPct > 0.5 ? '#4a4' : hpPct > 0.25 ? '#aa4' : '#a44';
+    ctx.fillRect(bx, by, barW * hpPct, barH);
+
+    // Energy bar
+    const enPct = clamp(c.energy / c.maxEnergy, 0, 1);
+    ctx.fillStyle = '#222'; ctx.fillRect(bx, by + 6, barW, 3);
+    ctx.fillStyle = '#44b'; ctx.fillRect(bx, by + 6, barW * enPct, 3);
+
+    // Name
+    ctx.fillStyle = isPlayer ? '#fff' : (c.team === TEAM_ALLY ? '#8f8' : '#f88');
+    ctx.font = `${isPlayer ? 'bold ' : ''}10px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(c.name, c.x, c.y - c.radius - 17);
+
+    // Condition dots
+    const conds = Object.keys(c.conditions);
+    for (let i = 0; i < conds.length; i++) {
+      const def = COND[conds[i]];
+      if (!def) continue;
+      ctx.fillStyle = def.color;
+      ctx.beginPath(); ctx.arc(c.x - (conds.length-1)*5 + i*10, c.y + c.radius + 6, 4, 0, Math.PI*2); ctx.fill();
+    }
+  }
+}
+
+// ── UI UPDATE ─────────────────────────────────────────────────────
+function updateUI() {
+  const p = game.player;
+  if (!p) return;
+
+  // Player bars
+  const hpPct = clamp(p.hp / p.maxHp * 100, 0, 100);
+  document.getElementById('hp-fill').style.width = hpPct + '%';
+  document.getElementById('hp-val').textContent = `${Math.ceil(p.hp)} / ${p.maxHp}`;
+  const enPct = clamp(p.energy / p.maxEnergy * 100, 0, 100);
+  document.getElementById('energy-fill').style.width = enPct + '%';
+  document.getElementById('energy-val').textContent = `${Math.floor(p.energy)} / ${p.maxEnergy}`;
+
+  // Cast bar
+  const cg = document.getElementById('cast-group');
+  if (p.casting) {
+    cg.style.display = 'flex';
+    const pct = clamp(p.castTimer / p.casting.sk.cast * 100, 0, 100);
+    document.getElementById('cast-fill').style.width = pct + '%';
+    document.getElementById('cast-val').textContent = p.casting.sk.name;
+  } else { cg.style.display = 'none'; }
+
+  // Player conditions
+  const pcEl = document.getElementById('player-conds');
+  pcEl.innerHTML = '';
+  for (const [name, data] of Object.entries({...p.conditions, ...p.hexes, ...p.enchantments})) {
+    const def = COND[name] || HEX[name] || ENCH[name];
+    if (!def) continue;
+    const badge = document.createElement('span');
+    badge.className = 'cond-badge';
+    badge.style.background = def.color + '99';
+    badge.style.border = `1px solid ${def.color}`;
+    badge.textContent = def.label + (data.duration < 9000 ? ` ${Math.ceil(data.duration)}s` : '');
+    pcEl.appendChild(badge);
+  }
+
+  // Target box
+  const tgt = p.target;
+  if (tgt && tgt.alive) {
+    document.getElementById('target-name').textContent = tgt.name;
+    document.getElementById('target-hp-fill').style.width = clamp(tgt.hp / tgt.maxHp * 100, 0, 100) + '%';
+    const tcEl = document.getElementById('target-conds');
+    tcEl.innerHTML = '';
+    for (const [name] of Object.entries({...tgt.conditions, ...tgt.hexes, ...tgt.enchantments})) {
+      const def = COND[name] || HEX[name] || ENCH[name];
+      if (!def) continue;
+      const dot = document.createElement('div');
+      dot.title = def.label;
+      dot.style.cssText = `width:10px;height:10px;border-radius:50%;background:${def.color};`;
+      tcEl.appendChild(dot);
+    }
+  } else {
+    document.getElementById('target-name').textContent = '— Aucune cible —';
+    document.getElementById('target-hp-fill').style.width = '0%';
+    document.getElementById('target-conds').innerHTML = '';
+  }
+
+  // Party list
+  const pl = document.getElementById('party-list');
+  pl.innerHTML = '';
+  for (const c of game.chars.filter(x => x.team === TEAM_ALLY)) {
+    const row = document.createElement('div'); row.className = 'party-row';
+    const hpP = clamp(c.hp / c.maxHp * 100, 0, 100);
+    const enP = clamp(c.energy / c.maxEnergy * 100, 0, 100);
+    const condDots = Object.keys(c.conditions).map(n => {
+      const def = COND[n]; return def ? `<div class="mini-cond" title="${def.label}" style="background:${def.color}"></div>` : '';
+    }).join('');
+    row.innerHTML = `<div class="party-name" style="color:${c.alive ? '#bbb' : '#555'}">${c.alive ? '' : '☠ '}${c.name}</div>
+      <div class="bar-row">
+        <div class="mini-bar"><div class="mini-bar-fill" style="width:${hpP}%;background:${hpP>50?'#4a4':hpP>25?'#aa4':'#a44'}"></div></div>
+        <div class="mini-bar"><div class="mini-bar-fill" style="width:${enP}%;background:#44b"></div></div>
+      </div>
+      <div class="mini-conds">${condDots}</div>`;
+    pl.appendChild(row);
+  }
+
+  // Skill bar
+  const sb = document.getElementById('skillbar');
+  for (let i = 0; i < 8; i++) {
+    const el = sb.children[i];
+    if (!el) continue;
+    const skId = p.skills[i];
+    const sk = SK[skId];
+    if (!sk) continue;
+    const cd = p.skillCooldowns[i];
+    const noE = p.energy < sk.cost;
+    const used = sk.oneUse && p.usedOneUse[i];
+    el.classList.toggle('on-cd', cd > 0 || used);
+    el.classList.toggle('no-energy', noE && cd <= 0);
+    const overlay = el.querySelector('.skill-cd-overlay');
+    if (overlay) {
+      if (used) overlay.textContent = '—';
+      else if (cd > 0) overlay.textContent = cd.toFixed(1);
+      else overlay.textContent = '';
+    }
+    // Toggle active states
+    if (skId === 'w_auto') el.classList.toggle('skill-toggle-active', p.autoAttack);
+    if (skId === 'w_frenzy') el.classList.toggle('skill-toggle-active', hasEnch(p, 'frenzy'));
+  }
+}
+
+// ── INIT SKILL BAR ───────────────────────────────────────────────
+function buildSkillBar(p) {
+  const sb = document.getElementById('skillbar');
+  sb.innerHTML = '';
+  for (let i = 0; i < 8; i++) {
+    const skId = p.skills[i];
+    const sk = SK[skId] || { name:'?', icon:'?', cost:0 };
+    const slot = document.createElement('div');
+    slot.className = 'skill-slot';
+    slot.title = sk.desc || sk.name;
+    slot.innerHTML = `
+      <span class="skill-key-txt">${i+1}</span>
+      <div class="skill-icon">${sk.icon || '?'}</div>
+      <div class="skill-name-txt">${sk.name}</div>
+      ${sk.cost > 0 ? `<span class="skill-cost-txt">${sk.cost}e</span>` : ''}
+      <div class="skill-cd-overlay"></div>`;
+    slot.addEventListener('click', () => useSkill(p, i));
+    sb.appendChild(slot);
+  }
+}
+
+// ── GAME START / END ──────────────────────────────────────────────
+function startGame() {
+  const cls = document.getElementById('class-picker').value;
+  const build = BUILDS[cls];
+  if (!build) return;
+
+  document.getElementById('overlay').style.display = 'none';
+  document.getElementById('log-entries').innerHTML = '';
+  game.chars = [];
+  game.effects = []; game.projectiles = []; game.aoeZones = [];
+  game.over = false; game.running = true;
+  game.logLines = [];
+
+  // Player
+  const player = makeChar(build, TEAM_ALLY, 160, 250, true);
+  player.name = 'Vous';
+  game.player = player;
+  game.chars.push(player);
+
+  // Allies
+  const monk = makeChar(ALLY_BUILDS.ally_monk, TEAM_ALLY, 120, 180);
+  const ele  = makeChar(ALLY_BUILDS.ally_ele,  TEAM_ALLY, 120, 320);
+  game.chars.push(monk, ele);
+
+  // Enemies
+  const ew = makeChar(ENEMY_BUILDS.e_warrior, TEAM_ENEMY, 540, 200);
+  const em = makeChar(ENEMY_BUILDS.e_monk,    TEAM_ENEMY, 590, 280);
+  const er = makeChar(ENEMY_BUILDS.e_ranger,  TEAM_ENEMY, 540, 360);
+  const en = makeChar(ENEMY_BUILDS.e_necro,   TEAM_ENEMY, 600, 430);
+  game.chars.push(ew, em, er, en);
+
+  // Default targets
+  player.target = ew;
+  monk.target   = player;
+  ele.target    = ew;
+  ew.target = player; er.target = player; en.target = player; em.target = monk;
+
+  buildSkillBar(player);
+  game.log('=== Combat commencé ! ===', 'log-sys');
+  game.log('ZQSD pour se déplacer, 1-8 pour les compétences', 'log-sys');
+}
+
+function endGame(won) {
+  if (game.over) return;
+  game.over = true; game.running = false;
+  const ov = document.getElementById('overlay');
+  ov.style.display = 'flex';
+  document.getElementById('overlay-msg').style.color = won ? '#8f8' : '#f88';
+  document.getElementById('overlay-msg').textContent = won ? '⚔ VICTOIRE !' : '☠ DÉFAITE';
+  document.getElementById('overlay-sub').textContent = won ? 'L\'équipe ennemie a été vaincue.' : 'Votre équipe a été anéantie.';
+  game.log(won ? '=== VICTOIRE ===' : '=== DÉFAITE ===', won ? 'log-heal' : 'log-dmg');
+}
+
+// ── LOOP ─────────────────────────────────────────────────────────
+let lastTime = 0;
+function loop(ts) {
+  const dt = Math.min((ts - lastTime) / 1000, 0.05);
+  lastTime = ts;
+  update(dt);
+  render();
+  updateUI();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(ts => { lastTime = ts; requestAnimationFrame(loop); });
+</script>
+</body>
+</html>
