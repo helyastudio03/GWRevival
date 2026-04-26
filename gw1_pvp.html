@@ -1548,6 +1548,8 @@ function makeChar(build, team, x, y, isPlayer) {
 const game = {
   chars: [], player: null,
   effects: [], projectiles: [], aoeZones: [],
+  floatingTexts: [],
+  map: null, flagStand: null,
   running: false, over: false,
   logLines: [],
   log(msg, cls = 'log-sys') {
@@ -2216,6 +2218,8 @@ function drawClassSymbol(ctx, x, y, r, classKey) {
 }
 
 function render() {
+  // Reset complet de la matrice — évite l'accumulation si un frame précédent a planté
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, AW, AH);
 
   // ── Caméra ───────────────────────────────────────────────────────
