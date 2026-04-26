@@ -483,6 +483,16 @@ function dealDmg(attacker, target, dmg, type, game) {
   // Frenzy: double damage received
   if (hasEnch(target, 'frenzy')) dmg = Math.floor(dmg * 2);
 
+  // Shelter spirit: reduce damage by 25% if target is near a friendly shelter zone
+  if (game.aoeZones) {
+    for (const z of game.aoeZones) {
+      if (z.isShelter && z.caster && z.caster.team === target.team && dist(z, target) < z.radius) {
+        dmg = Math.floor(dmg * 0.75);
+        break;
+      }
+    }
+  }
+
   // Moral: bonus attaquant
   if (game.flagStand) {
     const m = game.flagStand.morale[attacker.team];
@@ -634,8 +644,8 @@ const SK = {
       dead.alive = true; dead.hp = Math.floor(dead.maxHp * 0.25);
       dead.energy = Math.floor(dead.maxEnergy * 0.10);
       dead.conditions = {}; dead.hexes = {}; dead.enchantments = {};
-      dead.x = clamp(me.x + rnd(-50,50), 20, AW-20);
-      dead.y = clamp(me.y + rnd(-50,50), 20, AH-20);
+      dead.x = clamp(me.x + rnd(-50,50), 20, WORLD_W-20);
+      dead.y = clamp(me.y + rnd(-50,50), 20, WORLD_H-20);
       g.log(`${dead.name} ressuscité !`, 'log-heal');
       spawnFx(g, dead.x, dead.y, '#fff', 80, 1.0);
     }
@@ -1281,7 +1291,7 @@ const SK = {
     use(me, tgt, g) {
       const sx=(me.x+tgt.x)/2||me.x, sy=(me.y+tgt.y)/2||me.y;
       g.aoeZones.push({x:sx,y:sy,radius:200,color:'#f44',alpha:0.1,duration:30,timer:0,tickInterval:3,tickTimer:0,caster:me,
-        onTick(z,gg){ for(const e of getEnemies(me,gg)){ if(dist(z,e)<200){ const d=calcSpellDmg(me,e,30,40); dealDmg(me,e,d,'esprit',gg); } } }
+        tick(z,gg){ for(const e of getEnemies(me,gg)){ if(dist(z,e)<200){ const d=calcSpellDmg(me,e,30,40); dealDmg(me,e,d,'esprit',gg); } } }
       });
       g.log(`${me.name} invoque Chant de Sang!`,'log-dmg');
     }
@@ -1292,7 +1302,7 @@ const SK = {
     use(me, tgt, g) {
       const sx=me.x-50, sy=me.y;
       g.aoeZones.push({x:sx,y:sy,radius:250,color:'#0af',alpha:0.08,duration:30,timer:0,tickInterval:99,tickTimer:0,caster:me,
-        isShelter:true, onTick(){}
+        isShelter:true, tick(){}
       });
       g.log(`${me.name} invoque Abri!`,'log-heal');
       spawnFx(g,sx,sy,'#0af',100,0.8);
@@ -1733,7 +1743,7 @@ function aiUpdate(c, dt, g) {
     if (wounded) {
       c.target = wounded;
       // Stay near wounded ally
-      c.moveTarget = { x: clamp(wounded.x + rnd(-60,60), 30, AW-30), y: clamp(wounded.y + rnd(-60,60), 30, AH-30) };
+      c.moveTarget = { x: clamp(wounded.x + rnd(-60,60), 30, WORLD_W-30), y: clamp(wounded.y + rnd(-60,60), 30, WORLD_H-30) };
 
       // Choose heal skill
       if (wounded.hp / wounded.maxHp < 0.5) {
@@ -1764,9 +1774,9 @@ function aiUpdate(c, dt, g) {
     const d = dist(c, tgt);
     if (d < 250) {
       const angle = Math.atan2(c.y - tgt.y, c.x - tgt.x);
-      c.moveTarget = { x: clamp(tgt.x + Math.cos(angle) * 320, 30, AW-30), y: clamp(tgt.y + Math.sin(angle) * 320, 30, AH-30) };
+      c.moveTarget = { x: clamp(tgt.x + Math.cos(angle) * 320, 30, WORLD_W-30), y: clamp(tgt.y + Math.sin(angle) * 320, 30, WORLD_H-30) };
     } else if (d > 420) {
-      c.moveTarget = { x: clamp(tgt.x + rnd(-60,60), 30, AW-30), y: clamp(tgt.y + rnd(-60,60), 30, AH-30) };
+      c.moveTarget = { x: clamp(tgt.x + rnd(-60,60), 30, WORLD_W-30), y: clamp(tgt.y + rnd(-60,60), 30, WORLD_H-30) };
     }
     // Use skills in priority order
     const spellSkills = c.skills.filter(s => s.startsWith('e_') || s.startsWith('me_') || s.startsWith('n_'));
