@@ -518,14 +518,31 @@ function dealDmg(attacker, target, dmg, type, game) {
   game.log(`${target.name} -${dmg} (${type})`, 'log-dmg');
   spawnFx(game, target.x, target.y, '#f44', 25, 0.3);
 
-  if (target.hp <= 0) {
-    target.hp = 0;
-    target.alive = false;
-    target.conditions = {}; target.enchantments = {}; target.hexes = {};
-    target.casting = null;
-    game.log(`☠ ${target.name} est mort !`, 'log-sys');
-    spawnFx(game, target.x, target.y, '#f008', 80, 1.0);
-  }
+  if (target.hp <= 0) killChar(target, game);
+}
+
+const REZ_TIME = 15; // secondes avant réapparition au shrine
+
+function killChar(c, g, msg) {
+  if (!c.alive) return;
+  c.alive = false; c.hp = 0;
+  c.conditions = {}; c.enchantments = {}; c.hexes = {}; c.casting = null;
+  c.rezTimer = REZ_TIME;
+  g.deathCount[c.team] = (g.deathCount[c.team] || 0) + 1;
+  g.log(msg || `☠ ${c.name} est mort !`, 'log-sys');
+  spawnFx(g, c.x, c.y, '#f008', 80, 1.0);
+  addFloat(g, c.x, c.y - c.radius - 10, '☠', '#888', 18);
+}
+
+function respawnChar(c, g) {
+  c.alive = true;
+  c.hp = c.maxHp; c.energy = Math.floor(c.maxEnergy * 0.5);
+  c.conditions = {}; c.enchantments = {}; c.hexes = {};
+  c.x = c.spawnX + rnd(-30, 30); c.y = c.spawnY + rnd(-30, 30);
+  c.rezTimer = 0; c.autoAttack = false;
+  g.log(`✦ ${c.name} réapparaît au shrine !`, 'log-heal');
+  spawnFx(g, c.x, c.y, '#0ff', 80, 1.0);
+  addFloat(g, c.x, c.y, 'RESPAWN', '#0ff', 14);
 }
 
 function spawnFx(game, x, y, color, radius, duration) {
@@ -1541,6 +1558,7 @@ function makeChar(build, team, x, y, isPlayer) {
   return {
     ...build,
     team, x, y, isPlayer: !!isPlayer,
+    spawnX: x, spawnY: y,
     hp: build.maxHp, energy: build.maxEnergy,
     conditions: {}, enchantments: {}, hexes: {},
     alive: true, isMoving: false,
@@ -1549,7 +1567,7 @@ function makeChar(build, team, x, y, isPlayer) {
     casting: null, castTimer: 0,
     skillCooldowns: new Array(8).fill(0),
     usedOneUse: new Array(8).fill(false),
-    aiTimer: 0,
+    aiTimer: 0, rezTimer: 0,
     velocity: 0,
   };
 }
@@ -1561,6 +1579,7 @@ const game = {
   floatingTexts: [],
   map: null, flagStand: null,
   running: false, over: false,
+  deathCount: { 0: 0, 1: 0 },
   logLines: [],
   log(msg, cls = 'log-sys') {
     this.logLines.push({ msg, cls });
@@ -1694,7 +1713,10 @@ function moveChar(c, dt) {
     const mdx = c.moveTarget.x - c.x, mdy = c.moveTarget.y - c.y;
     const d = Math.hypot(mdx, mdy);
     if (d < 4) { c.moveTarget = null; c.isMoving = false; }
-    else { dx = mdx / d; dy = mdy / d; c.isMoving = true; }
+    else {
+      const dir = steerDir(c, mdx / d, mdy / d);
+      dx = dir.dx; dy = dir.dy; c.isMoving = true;
+    }
   } else {
     c.isMoving = false;
   }
@@ -1702,6 +1724,30 @@ function moveChar(c, dt) {
   c.x = clamp(c.x + dx * spd * dt, c.radius, WORLD_W - c.radius);
   c.y = clamp(c.y + dy * spd * dt, c.radius, WORLD_H - c.radius);
   resolveWallCollision(c);
+}
+
+// Oriente le déplacement pour éviter les murs
+function steerDir(c, dx, dy) {
+  if (!game.map || !game.map.walls.length) return { dx, dy };
+  const probe = c.radius * 2.5;
+  const steps = [0, 25, -25, 50, -50, 80, -80, 110, -110, 150, -150];
+  for (const deg of steps) {
+    const rad = deg * Math.PI / 180;
+    const cos = Math.cos(rad), sin = Math.sin(rad);
+    const ndx = dx * cos - dy * sin;
+    const ndy = dx * sin + dy * cos;
+    const px = c.x + ndx * probe;
+    const py = c.y + ndy * probe;
+    let blocked = false;
+    for (const w of game.map.walls) {
+      if (px + c.radius > w.x && px - c.radius < w.x + w.w &&
+          py + c.radius > w.y && py - c.radius < w.y + w.h) {
+        blocked = true; break;
+      }
+    }
+    if (!blocked) return { dx: ndx, dy: ndy };
+  }
+  return { dx, dy };
 }
 
 function resolveWallCollision(c) {
@@ -1732,6 +1778,34 @@ function aiUpdate(c, dt, g) {
   const allies  = getAllies(c, g).filter(x => x.alive);
   const enemies = getEnemies(c, g);
   if (!enemies.length) return;
+
+  // ── Flagger AI : va capturer le Flag Stand ──
+  if (c.isFlagger && g.flagStand) {
+    const fs = g.flagStand;
+    const atFlag = dist(c, fs) < fs.radius;
+    const nearFoes = enemies.filter(e => dist(c, e) < 220);
+
+    // Si le flag n'est pas à nous et qu'on n'est pas encore dessus, on y court
+    if (fs.team !== c.team && !atFlag) {
+      c.moveTarget = { x: fs.x + rnd(-15,15), y: fs.y + rnd(-15,15) };
+      // Combat de route si ennemi très proche
+      if (nearFoes.length) {
+        c.target = nearFoes[0]; c.autoAttack = true;
+      }
+      return;
+    }
+    // On est sur le flag (ou il nous appartient) : se comporter normalement
+    // mais rester dans la zone si le flag est contesté
+    if (atFlag && fs.team === c.team) {
+      const nearFoes2 = enemies.filter(e => dist(c, e) < fs.radius + 80);
+      if (nearFoes2.length) {
+        c.target = nearFoes2.reduce((b,e) => e.hp < b.hp ? e : b, nearFoes2[0]);
+        c.autoAttack = true;
+        return;
+      }
+    }
+    // Flag capturé et zone calme → IA normale (continue ci-dessous)
+  }
 
   // ── Monk AI ──
   if (c.skills.includes('mo_woh') || c.skills.includes('mo_heal')) {
@@ -1861,7 +1935,7 @@ function update(dt) {
           const dmg = Math.floor(data.dmgAccum);
           data.dmgAccum -= dmg;
           c.hp = Math.max(0, c.hp - dmg);
-          if (c.hp === 0) { c.alive = false; game.log(`☠ ${c.name} succombe à ses blessures !`, 'log-sys'); }
+          if (c.hp <= 0) killChar(c, game, `☠ ${c.name} succombe à ses blessures !`);
         }
       }
       if (data.duration <= 0) delete c.conditions[name];
@@ -1877,7 +1951,7 @@ function update(dt) {
         if (data.dmgAccum >= 1) {
           const d = Math.floor(data.dmgAccum); data.dmgAccum -= d;
           c.hp = Math.max(0, c.hp - d);
-          if (c.hp === 0) { c.alive = false; game.log(`☠ ${c.name} succombe à un maléfice !`, 'log-sys'); }
+          if (c.hp <= 0) killChar(c, game, `☠ ${c.name} succombe à un maléfice !`);
         }
       }
       if (def && def.energyDrain) {
@@ -1953,10 +2027,7 @@ function update(dt) {
       for (const dz of game.map.damage) {
         if (c.x > dz.x && c.x < dz.x + dz.w && c.y > dz.y && c.y < dz.y + dz.h) {
           c.hp -= (dz.dps || 10) * dt;
-          if (c.hp <= 0 && c.alive) {
-            c.alive = false;
-            game.log(`☠ ${c.name} périt dans la lave !`, 'log-dmg');
-          }
+          if (c.hp <= 0) killChar(c, game, `☠ ${c.name} périt dans la lave !`);
         }
       }
     }
@@ -2004,11 +2075,17 @@ function update(dt) {
   // Flag Stand update
   if (game.flagStand) updateFlagStand(dt);
 
-  // Win/lose check
-  const aliveAllies  = game.chars.filter(c => c.team === TEAM_ALLY  && c.alive);
-  const aliveEnemies = game.chars.filter(c => c.team === TEAM_ENEMY && c.alive);
-  if (!aliveAllies.length)  endGame(false);
-  if (!aliveEnemies.length) endGame(true);
+  // Respawn des personnages morts
+  for (const c of game.chars) {
+    if (!c.alive && c.rezTimer > 0) {
+      c.rezTimer -= dt;
+      if (c.rezTimer <= 0) respawnChar(c, game);
+    }
+  }
+
+  // Condition de victoire : 8 morts dans une équipe
+  if ((game.deathCount[TEAM_ALLY]  || 0) >= 8) endGame(false);
+  if ((game.deathCount[TEAM_ENEMY] || 0) >= 8) endGame(true);
 }
 
 // ── RENDER ────────────────────────────────────────────────────────
@@ -2092,28 +2169,43 @@ function drawFlagStand() {
 }
 
 function drawMoraleHUD() {
-  const fs = game.flagStand;
-  if (!fs) return;
-  // Bandeau haut-gauche dans l'espace écran
   ctx.save();
   ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'left';
+
+  // ── Compteur de morts ─────────────────────────────────────────
+  const dA = game.deathCount[TEAM_ALLY]  || 0;
+  const dE = game.deathCount[TEAM_ENEMY] || 0;
+  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  ctx.fillRect(4, 4, 160, 44);
+  // Barres mort (8 max)
+  for (let i = 0; i < 8; i++) {
+    ctx.fillStyle = i < dA ? '#f44' : '#333';
+    ctx.fillRect(6 + i * 17, 7, 14, 7);
+    ctx.fillStyle = i < dE ? '#f88' : '#333';
+    ctx.fillRect(6 + i * 17, 16, 14, 7);
+  }
+  ctx.fillStyle = '#f44'; ctx.fillText(`Morts Alliés : ${dA}/8`, 6, 37);
+  ctx.fillStyle = '#f88'; ctx.fillText(`Morts Ennemis: ${dE}/8`, 86, 37);
+
+  const fs = game.flagStand;
+  if (!fs) { ctx.restore(); return; }
+
+  // ── Moral flag stand ──────────────────────────────────────────
   const mA = fs.morale[TEAM_ALLY], mE = fs.morale[TEAM_ENEMY];
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
-  ctx.fillRect(4, 4, 160, 22);
-  // Barre morale alliée
+  ctx.fillRect(4, 50, 160, 22);
   ctx.fillStyle = '#4af';
-  ctx.fillRect(6, 6, mA * 7, 8);
+  ctx.fillRect(6, 52, mA * 7, 8);
   ctx.strokeStyle = '#4af'; ctx.lineWidth = 1;
-  ctx.strokeRect(6, 6, 70, 8);
-  ctx.fillStyle = '#4af'; ctx.fillText(`Moral Allié  +${mA}%`, 80, 15);
-  // Barre morale ennemie
+  ctx.strokeRect(6, 52, 70, 8);
+  ctx.fillStyle = '#4af'; ctx.fillText(`Moral Allié  +${mA}%`, 80, 61);
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
-  ctx.fillRect(4, 27, 160, 22);
+  ctx.fillRect(4, 73, 160, 22);
   ctx.fillStyle = '#f44';
-  ctx.fillRect(6, 29, mE * 7, 8);
+  ctx.fillRect(6, 75, mE * 7, 8);
   ctx.strokeStyle = '#f44';
-  ctx.strokeRect(6, 29, 70, 8);
-  ctx.fillStyle = '#f44'; ctx.fillText(`Moral Ennemi +${mE}%`, 80, 38);
+  ctx.strokeRect(6, 75, 70, 8);
+  ctx.fillStyle = '#f44'; ctx.fillText(`Moral Ennemi +${mE}%`, 80, 84);
   ctx.restore();
 }
 
@@ -2322,11 +2414,20 @@ function render() {
   // Characters
   for (const c of game.chars) {
     if (!c.alive) {
-      // Dead body
+      // Corps + timer de résurrection
       ctx.save(); ctx.globalAlpha = 0.25;
       ctx.fillStyle = '#333';
       ctx.beginPath(); ctx.arc(c.x, c.y, c.radius, 0, Math.PI*2); ctx.fill();
-      ctx.restore(); continue;
+      ctx.restore();
+      if (c.rezTimer > 0) {
+        ctx.save();
+        ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillStyle = c.team === TEAM_ALLY ? '#6df' : '#f86';
+        ctx.globalAlpha = 0.9;
+        ctx.fillText(`${Math.ceil(c.rezTimer)}s`, c.x, c.y - c.radius - 3);
+        ctx.restore();
+      }
+      continue;
     }
 
     const isSelected = game.player && game.player.target === c;
@@ -2657,6 +2758,7 @@ function startGame() {
   game.floatingTexts = [];
   game.over = false; game.running = false; game.logLines = [];
   game.flagStand = null;
+  game.deathCount = { 0: 0, 1: 0 };
 
   // --- Map aléatoire ---
   game.map = MAPS[Math.floor(Math.random() * MAPS.length)];
@@ -2700,6 +2802,14 @@ function startGame() {
   allies.forEach(a => { a.target = a.healBonus ? player : firstEnemy; });
   enemies.forEach(e => { e.target = e.healBonus ? allies[0]||player : player; });
 
+  // Désignation des flaggers (un par équipe, non-healer de préférence)
+  if (game.flagStand) {
+    const aFlagger = allies.find(a => !a.healBonus) || allies[0];
+    if (aFlagger) aFlagger.isFlagger = true;
+    const eFlagger = enemies.find(e => !e.healBonus && e.classKey!=='monk' && e.classKey!=='ritualist') || enemies[0];
+    if (eFlagger) eFlagger.isFlagger = true;
+  }
+
   buildSkillBar(player);
 
   // --- Countdown 3-2-1 ---
@@ -2742,7 +2852,10 @@ function endGame(won) {
   ov.style.display = 'flex';
   document.getElementById('overlay-msg').style.color = won ? '#8f8' : '#f88';
   document.getElementById('overlay-msg').textContent = won ? '⚔ VICTOIRE !' : '☠ DÉFAITE';
-  document.getElementById('overlay-sub').textContent = won ? 'L\'équipe ennemie a été vaincue.' : 'Votre équipe a été anéantie.';
+  const dA = game.deathCount[TEAM_ALLY]||0, dE = game.deathCount[TEAM_ENEMY]||0;
+  document.getElementById('overlay-sub').textContent = won
+    ? `L'équipe ennemie a atteint 8 morts. Vos pertes : ${dA}.`
+    : `Votre équipe a atteint 8 morts. Pertes ennemies : ${dE}.`;
   game.log(won ? '=== VICTOIRE ===' : '=== DÉFAITE ===', won ? 'log-heal' : 'log-dmg');
 }
 
