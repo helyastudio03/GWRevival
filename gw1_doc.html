@@ -582,7 +582,240 @@ footer {
   <!-- SECTION 5 : CLASSES -->
   <section class="section" id="classes">
     <div class="section-title">Classes <span>10 classes jouables</span></div>
-    <!-- contenu étape 3 -->
+
+    <p>Chaque classe a des statistiques de base fixes, une couleur d'équipe distincte et un symbole dessiné sur son personnage. Les 10 classes sont toutes jouables via les 20 builds disponibles.</p>
+
+    <div class="info-box">L'armure réduit les dégâts physiques via la formule exponentielle. Les sorts contournent largement l'armure (effective = 60 + (armor−60)×0.2). Vitesse de base = 100 px/s.</div>
+
+    <!-- GUERRIER -->
+    <div class="card" style="margin-top:20px; border-left: 3px solid #e8873a">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px">
+        <span style="font-size:1.8em">⚔</span>
+        <div>
+          <div style="font-size:1.1em; font-weight:700" class="class-warrior">Guerrier</div>
+          <div class="muted" style="font-size:0.82em">Corps-à-corps · Pression physique · Contrôle</div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-pill"><span class="lbl">PV</span><span class="val green">560</span></div>
+        <div class="stat-pill"><span class="lbl">Énergie</span><span class="val">25</span></div>
+        <div class="stat-pill"><span class="lbl">Regen E</span><span class="val">2/s</span></div>
+        <div class="stat-pill"><span class="lbl">Armure</span><span class="val">88</span></div>
+        <div class="stat-pill"><span class="lbl">Vitesse</span><span class="val">100</span></div>
+        <div class="stat-pill"><span class="lbl">Dégâts</span><span class="val">20–28</span></div>
+        <div class="stat-pill"><span class="lbl">Portée atk</span><span class="val">130</span></div>
+        <div class="stat-pill"><span class="lbl">Vitesse atk</span><span class="val">1.33/s</span></div>
+      </div>
+      <p style="margin-top:10px; font-size:0.88em">Classe la plus résistante avec la meilleure armure du jeu. Spécialisé dans les combos (Éviscération→Entaille pour Blessure Profonde) et le contrôle (renversements via Choc et Charge du Taureau). La Frénésie double l'attaque mais double aussi les dégâts reçus — à annuler avec Rush. Symbole : <strong>épées croisées</strong>.</p>
+    </div>
+
+    <!-- MOINE -->
+    <div class="card" style="border-left: 3px solid #88ffcc">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px">
+        <span style="font-size:1.8em">✚</span>
+        <div>
+          <div style="font-size:1.1em; font-weight:700" class="class-monk">Moine</div>
+          <div class="muted" style="font-size:0.82em">Soutien · Guérison · Protection</div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-pill"><span class="lbl">PV</span><span class="val">480</span></div>
+        <div class="stat-pill"><span class="lbl">Énergie</span><span class="val">30</span></div>
+        <div class="stat-pill"><span class="lbl">Regen E</span><span class="val">4/s</span></div>
+        <div class="stat-pill"><span class="lbl">Armure</span><span class="val">70</span></div>
+        <div class="stat-pill"><span class="lbl">Vitesse</span><span class="val">100</span></div>
+        <div class="stat-pill"><span class="lbl">healBonus</span><span class="val green">+25</span></div>
+        <div class="stat-pill"><span class="lbl">Portée atk</span><span class="val">130</span></div>
+      </div>
+      <p style="margin-top:10px; font-size:0.88em">Pilier défensif de toute équipe. Deux spécialisations : <strong>Guérison</strong> (soins directs élevés, Santé Insufflée d'urgence) et <strong>Protection</strong> (Esprit Protecteur, Gardien, Renversement du Destin). Le healBonus augmente tous les soins. Symbole : <strong>croix</strong>.</p>
+    </div>
+
+    <!-- ÉLÉMENTALISTE -->
+    <div class="card" style="border-left: 3px solid #ff88aa">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px">
+        <span style="font-size:1.8em">◆</span>
+        <div>
+          <div style="font-size:1.1em; font-weight:700" class="class-elementalist">Élémentaliste</div>
+          <div class="muted" style="font-size:0.82em">Dégâts de sorts · AoE · Contrôle élémentaire</div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-pill"><span class="lbl">PV</span><span class="val red">420</span></div>
+        <div class="stat-pill"><span class="lbl">Énergie</span><span class="val green">45</span></div>
+        <div class="stat-pill"><span class="lbl">Regen E</span><span class="val">4/s</span></div>
+        <div class="stat-pill"><span class="lbl">Armure</span><span class="val red">65</span></div>
+        <div class="stat-pill"><span class="lbl">Vitesse</span><span class="val">100</span></div>
+        <div class="stat-pill"><span class="lbl">spellBonus</span><span class="val">+15</span></div>
+        <div class="stat-pill"><span class="lbl">Portée atk</span><span class="val green">600</span></div>
+      </div>
+      <p style="margin-top:10px; font-size:0.88em">Plus grande réserve d'énergie du jeu, mais plus faibles PV. Deux axes : <strong>Air Spike</strong> (Éclair en Chaîne + Frappe de Foudre pour bursts rapides) et <strong>Feu AoE</strong> (Tempête de Feu, Blizzard, Rodgort, Pluie de Météores pour zone control). Symbole : <strong>diamant</strong>.</p>
+    </div>
+
+    <!-- MESMER -->
+    <div class="card" style="border-left: 3px solid #cc88ff">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px">
+        <span style="font-size:1.8em">〜</span>
+        <div>
+          <div style="font-size:1.1em; font-weight:700" class="class-mesmer">Illusionniste (Mesmer)</div>
+          <div class="muted" style="font-size:0.82em">Contrôle · Privation d'énergie · Maléfices</div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-pill"><span class="lbl">PV</span><span class="val">450</span></div>
+        <div class="stat-pill"><span class="lbl">Énergie</span><span class="val">40</span></div>
+        <div class="stat-pill"><span class="lbl">Regen E</span><span class="val">4/s</span></div>
+        <div class="stat-pill"><span class="lbl">Armure</span><span class="val red">65</span></div>
+        <div class="stat-pill"><span class="lbl">Vitesse</span><span class="val">100</span></div>
+        <div class="stat-pill"><span class="lbl">spellBonus</span><span class="val">+10</span></div>
+        <div class="stat-pill"><span class="lbl">Portée atk</span><span class="val">500</span></div>
+      </div>
+      <p style="margin-top:10px; font-size:0.88em">Classe de perturbation. Punit les lanceurs de sorts (Retour de Flamme, Esprit Rancunier, Empathie) et vide l'énergie des ennemis (Surtension d'Énergie). L'interruption instantanée bloque les incantations en cours. Symbole : <strong>spirale</strong>.</p>
+    </div>
+
+    <!-- NÉCROMANT -->
+    <div class="card" style="border-left: 3px solid #aa6688">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px">
+        <span style="font-size:1.8em">☠</span>
+        <div>
+          <div style="font-size:1.1em; font-weight:700" class="class-necro">Nécromant</div>
+          <div class="muted" style="font-size:0.82em">Maléfices · Dégâts sur la durée · Soutien offensif</div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-pill"><span class="lbl">PV</span><span class="val">440</span></div>
+        <div class="stat-pill"><span class="lbl">Énergie</span><span class="val">35</span></div>
+        <div class="stat-pill"><span class="lbl">Regen E</span><span class="val">4/s</span></div>
+        <div class="stat-pill"><span class="lbl">Armure</span><span class="val red">65</span></div>
+        <div class="stat-pill"><span class="lbl">Vitesse</span><span class="val">100</span></div>
+        <div class="stat-pill"><span class="lbl">spellBonus</span><span class="val">+10</span></div>
+        <div class="stat-pill"><span class="lbl">Portée atk</span><span class="val">500</span></div>
+      </div>
+      <p style="margin-top:10px; font-size:0.88em">Spécialiste des maléfices de pression. L'Esprit Rancunier punit chaque action ennemie. La Marque de la Douleur crée une AoE passive autour de la cible. Le build Sang cumule dégâts et léger soutien. Symbole : <strong>crâne</strong>.</p>
+    </div>
+
+    <!-- RÔDEUR -->
+    <div class="card" style="border-left: 3px solid #cccc44">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px">
+        <span style="font-size:1.8em">🏹</span>
+        <div>
+          <div style="font-size:1.1em; font-weight:700" class="class-ranger">Rôdeur</div>
+          <div class="muted" style="font-size:0.82em">Distance · Conditions · Interruption</div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-pill"><span class="lbl">PV</span><span class="val">460</span></div>
+        <div class="stat-pill"><span class="lbl">Énergie</span><span class="val">25</span></div>
+        <div class="stat-pill"><span class="lbl">Regen E</span><span class="val">3/s</span></div>
+        <div class="stat-pill"><span class="lbl">Armure</span><span class="val">75</span></div>
+        <div class="stat-pill"><span class="lbl">Vitesse</span><span class="val">105</span></div>
+        <div class="stat-pill"><span class="lbl">Dégâts</span><span class="val">16–22</span></div>
+        <div class="stat-pill"><span class="lbl">Portée atk</span><span class="val">380</span></div>
+      </div>
+      <p style="margin-top:10px; font-size:0.88em">Combine distance et conditions. Le Tir Estropiant ralentit les ennemis dès le début du combat. Application de Poison + Flèche Enflammée empilent conditions dps. Le Tir Distrayant et le Barrage offrent interruption et multi-cible. Symbole : <strong>arc et flèche</strong>.</p>
+    </div>
+
+    <!-- ASSASSIN -->
+    <div class="card" style="border-left: 3px solid #6688cc">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px">
+        <span style="font-size:1.8em">✕</span>
+        <div>
+          <div style="font-size:1.1em; font-weight:700" class="class-assassin">Assassin</div>
+          <div class="muted" style="font-size:0.82em">Burst · Téléportation · Combos d'attaques</div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-pill"><span class="lbl">PV</span><span class="val">440</span></div>
+        <div class="stat-pill"><span class="lbl">Énergie</span><span class="val">30</span></div>
+        <div class="stat-pill"><span class="lbl">Regen E</span><span class="val">3/s</span></div>
+        <div class="stat-pill"><span class="lbl">Armure</span><span class="val">70</span></div>
+        <div class="stat-pill"><span class="lbl">Vitesse</span><span class="val green">110</span></div>
+        <div class="stat-pill"><span class="lbl">Dégâts</span><span class="val">18–26</span></div>
+        <div class="stat-pill"><span class="lbl">Vitesse atk</span><span class="val green">1.5/s</span></div>
+      </div>
+      <p style="margin-top:10px; font-size:0.88em">Classe la plus rapide du jeu. Prison des Ombres téléporte instantanément sur la cible. Les attaques suivent un système Conduite → Secondaire → Duale pour des combos dévastateurs (Cécité, Renversement, Hémorragie + Blessure Profonde en chaîne). Symbole : <strong>croix de lames</strong>.</p>
+    </div>
+
+    <!-- RITUALISTE -->
+    <div class="card" style="border-left: 3px solid #88ccaa">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px">
+        <span style="font-size:1.8em">⊙</span>
+        <div>
+          <div style="font-size:1.1em; font-weight:700" class="class-ritualist">Ritualiste</div>
+          <div class="muted" style="font-size:0.82em">Esprits · Soutien · Dégâts hybrides</div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-pill"><span class="lbl">PV</span><span class="val">460</span></div>
+        <div class="stat-pill"><span class="lbl">Énergie</span><span class="val">35</span></div>
+        <div class="stat-pill"><span class="lbl">Regen E</span><span class="val">4/s</span></div>
+        <div class="stat-pill"><span class="lbl">Armure</span><span class="val red">65</span></div>
+        <div class="stat-pill"><span class="lbl">Vitesse</span><span class="val">100</span></div>
+        <div class="stat-pill"><span class="lbl">healBonus</span><span class="val green">+15</span></div>
+        <div class="stat-pill"><span class="lbl">Portée atk</span><span class="val">130</span></div>
+      </div>
+      <p style="margin-top:10px; font-size:0.88em">Classe hybride unique. Invoque des <strong>esprits persistants</strong> (zones AoE) : Chant de Sang inflige des dégâts passifs toutes les 3s, Abri réduit les dégâts de toute l'équipe de 25% dans sa zone. La Rage des Ancêtres offre un burst AoE instantané. Symbole : <strong>3 cercles concentriques</strong>.</p>
+    </div>
+
+    <!-- DERVICHE -->
+    <div class="card" style="border-left: 3px solid #ddaa44">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px">
+        <span style="font-size:1.8em">☽</span>
+        <div>
+          <div style="font-size:1.1em; font-weight:700" class="class-dervish">Derviche</div>
+          <div class="muted" style="font-size:0.82em">Faux AoE · Enchantements · Sustain</div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-pill"><span class="lbl">PV</span><span class="val green">520</span></div>
+        <div class="stat-pill"><span class="lbl">Énergie</span><span class="val">35</span></div>
+        <div class="stat-pill"><span class="lbl">Regen E</span><span class="val">3/s</span></div>
+        <div class="stat-pill"><span class="lbl">Armure</span><span class="val">80</span></div>
+        <div class="stat-pill"><span class="lbl">Vitesse</span><span class="val">105</span></div>
+        <div class="stat-pill"><span class="lbl">Dégâts</span><span class="val">22–34</span></div>
+        <div class="stat-pill"><span class="lbl">Portée atk</span><span class="val">160</span></div>
+        <div class="stat-pill"><span class="lbl">Vitesse atk</span><span class="val">1.2/s</span></div>
+      </div>
+      <p style="margin-top:10px; font-size:0.88em">Corps-à-corps AoE avec une faux (portée 160). Toutes ses attaques touchent automatiquement plusieurs ennemis adjacents. L'Avatar de Mélandru octroie une immunité totale aux conditions pendant 20s. La Régénération Mystique se renforce avec le nombre d'enchantements actifs. Symbole : <strong>faux</strong>.</p>
+    </div>
+
+    <!-- PARAGONE -->
+    <div class="card" style="border-left: 3px solid #ffcc66">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px">
+        <span style="font-size:1.8em">⟋</span>
+        <div>
+          <div style="font-size:1.1em; font-weight:700" class="class-paragon">Paragone</div>
+          <div class="muted" style="font-size:0.82em">Cris d'équipe · Lance · Soutien offensif</div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-pill"><span class="lbl">PV</span><span class="val">480</span></div>
+        <div class="stat-pill"><span class="lbl">Énergie</span><span class="val">30</span></div>
+        <div class="stat-pill"><span class="lbl">Regen E</span><span class="val">4/s</span></div>
+        <div class="stat-pill"><span class="lbl">Armure</span><span class="val">75</span></div>
+        <div class="stat-pill"><span class="lbl">Vitesse</span><span class="val">100</span></div>
+        <div class="stat-pill"><span class="lbl">Dégâts</span><span class="val">14–20</span></div>
+        <div class="stat-pill"><span class="lbl">Portée atk</span><span class="val">400</span></div>
+      </div>
+      <p style="margin-top:10px; font-size:0.88em">Soutien offensif via des <strong>cris</strong> qui affectent toute l'équipe dans un rayon de 300 px. "Rien à Craindre !" réduit les dégâts reçus de 50%. "En Arrière !" donne du sprint à toute l'équipe. "Visez les Yeux !" permet des aveugles sur les prochaines attaques alliées. Symbole : <strong>lance</strong>.</p>
+    </div>
+
+    <!-- Tableau comparatif -->
+    <div class="subsection-title">Tableau comparatif</div>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>Classe</th><th>PV</th><th>Énergie</th><th>Armure</th><th>Vitesse</th><th>Portée</th><th>Rôle principal</th></tr>
+        <tr><td><span class="class-dot" style="background:#e8873a"></span><span class="class-warrior">Guerrier</span></td><td class="green">560</td><td>25</td><td class="green">88</td><td>100</td><td>130</td><td>Pression physique, contrôle</td></tr>
+        <tr><td><span class="class-dot" style="background:#88ffcc"></span><span class="class-monk">Moine</span></td><td>480</td><td>30</td><td>70</td><td>100</td><td>130</td><td>Guérison, protection</td></tr>
+        <tr><td><span class="class-dot" style="background:#ff88aa"></span><span class="class-elementalist">Élémentaliste</span></td><td class="red">420</td><td class="green">45</td><td class="red">65</td><td>100</td><td class="green">600</td><td>Dégâts sorts, AoE</td></tr>
+        <tr><td><span class="class-dot" style="background:#cc88ff"></span><span class="class-mesmer">Illusionniste</span></td><td>450</td><td>40</td><td class="red">65</td><td>100</td><td>500</td><td>Perturbation, énergie-denial</td></tr>
+        <tr><td><span class="class-dot" style="background:#aa6688"></span><span class="class-necro">Nécromant</span></td><td>440</td><td>35</td><td class="red">65</td><td>100</td><td>500</td><td>Maléfices, pression durable</td></tr>
+        <tr><td><span class="class-dot" style="background:#cccc44"></span><span class="class-ranger">Rôdeur</span></td><td>460</td><td>25</td><td>75</td><td>105</td><td>380</td><td>Conditions, interruption</td></tr>
+        <tr><td><span class="class-dot" style="background:#6688cc"></span><span class="class-assassin">Assassin</span></td><td>440</td><td>30</td><td>70</td><td class="green">110</td><td>130</td><td>Burst, mobilité</td></tr>
+        <tr><td><span class="class-dot" style="background:#88ccaa"></span><span class="class-ritualist">Ritualiste</span></td><td>460</td><td>35</td><td class="red">65</td><td>100</td><td>130</td><td>Esprits, soutien hybride</td></tr>
+        <tr><td><span class="class-dot" style="background:#ddaa44"></span><span class="class-dervish">Derviche</span></td><td>520</td><td>35</td><td>80</td><td>105</td><td>160</td><td>AoE mêlée, enchantements</td></tr>
+        <tr><td><span class="class-dot" style="background:#ffcc66"></span><span class="class-paragon">Paragone</span></td><td>480</td><td>30</td><td>75</td><td>100</td><td>400</td><td>Cris d'équipe, soutien</td></tr>
+      </table>
+    </div>
   </section>
 
   <!-- SECTION 6 : SKILLS -->
