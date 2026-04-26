@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guild Wars PvP Prototype — Documentation</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg:        #0d0d1a;
+  --bg2:       #131320;
+  --bg3:       #1a1a2e;
+  --border:    #2a2a44;
+  --gold:      #c8a000;
+  --gold2:     #e8c040;
+  --text:      #d0d0e0;
+  --muted:     #7070a0;
+  --red:       #e04040;
+  --green:     #40c060;
+  --blue:      #40a0e0;
+  --purple:    #a060e0;
+  --orange:    #e08030;
+  --yellow:    #e0c030;
+  --ally:      #4af;
+  --enemy:     #f44;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ── LAYOUT ── */
+.page-wrap {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 20px 60px;
+}
+
+/* ── HEADER ── */
+.doc-header {
+  text-align: center;
+  padding: 32px 0 24px;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 32px;
+}
+.doc-header h1 {
+  font-size: 2em;
+  color: var(--gold);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  text-shadow: 0 0 20px rgba(200,160,0,0.4);
+}
+.doc-header .subtitle {
+  color: var(--muted);
+  font-size: 0.9em;
+  margin-top: 6px;
+  letter-spacing: 2px;
+}
+.doc-header .version-badge {
+  display: inline-block;
+  margin-top: 12px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.78em;
+  padding: 3px 12px;
+  border-radius: 20px;
+}
+
+/* ── NAV ── */
+nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(13,13,26,0.95);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  justify-content: center;
+}
+nav a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.82em;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: color 0.15s;
+}
+nav a:hover { color: var(--gold); }
+
+/* ── SECTIONS ── */
+.section {
+  margin-bottom: 48px;
+}
+.section-title {
+  font-size: 1.25em;
+  color: var(--gold);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+  margin-bottom: 20px;
+}
+.section-title span {
+  color: var(--muted);
+  font-size: 0.7em;
+  font-weight: normal;
+  letter-spacing: 1px;
+  margin-left: 10px;
+}
+.subsection-title {
+  font-size: 1em;
+  color: var(--gold2);
+  letter-spacing: 1px;
+  margin: 20px 0 10px;
+  padding-left: 10px;
+  border-left: 3px solid var(--gold);
+}
+
+/* ── CARDS ── */
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+.card-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 600px) { .card-2col { grid-template-columns: 1fr; } }
+
+/* ── TABLES ── */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88em;
+}
+th {
+  background: var(--bg3);
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 1px;
+  font-size: 0.8em;
+  text-transform: uppercase;
+  padding: 7px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+td {
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(42,42,68,0.5);
+  vertical-align: top;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,0.03); }
+.tbl-wrap {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+/* ── BADGES ── */
+.badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-size: 0.76em;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+.badge-cond  { background: rgba(240,80,80,0.2);  color: #f88;  border: 1px solid rgba(240,80,80,0.3); }
+.badge-hex   { background: rgba(160,80,240,0.2); color: #c8f;  border: 1px solid rgba(160,80,240,0.3); }
+.badge-ench  { background: rgba(64,160,224,0.2); color: #8df;  border: 1px solid rgba(64,160,224,0.3); }
+.badge-elite { background: rgba(200,160,0,0.2);  color: #fc0;  border: 1px solid rgba(200,160,0,0.3); }
+.badge-heal  { background: rgba(64,192,96,0.2);  color: #8f8;  border: 1px solid rgba(64,192,96,0.3); }
+.badge-dmg   { background: rgba(224,64,64,0.2);  color: #f88;  border: 1px solid rgba(224,64,64,0.3); }
+.badge-util  { background: rgba(128,128,200,0.2);color: #aaf;  border: 1px solid rgba(128,128,200,0.3); }
+
+/* ── SKILL BAR ── */
+.skill-bar {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.skill-slot {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.8em;
+}
+.skill-slot .icon { font-size: 1.1em; }
+.skill-slot .key {
+  color: var(--muted);
+  font-size: 0.75em;
+  background: rgba(255,255,255,0.06);
+  padding: 0 4px;
+  border-radius: 2px;
+}
+
+/* ── CLASS COLORS ── */
+.class-warrior     { color: #e8873a; }
+.class-monk        { color: #88ffcc; }
+.class-elementalist{ color: #ff88aa; }
+.class-mesmer      { color: #cc88ff; }
+.class-necro       { color: #cc88aa; }
+.class-ranger      { color: #cccc44; }
+.class-assassin    { color: #6688cc; }
+.class-ritualist   { color: #88ccaa; }
+.class-dervish     { color: #ddaa44; }
+.class-paragon     { color: #ffcc66; }
+
+.class-dot {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+/* ── MAP PREVIEW ── */
+.map-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+}
+.map-card h3 {
+  color: var(--gold2);
+  margin-bottom: 8px;
+  font-size: 1em;
+}
+.map-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+/* ── KEY BINDING ── */
+.keybind-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+.keybind-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+kbd {
+  display: inline-block;
+  background: var(--bg3);
+  border: 1px solid #444;
+  border-bottom: 2px solid #333;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-family: monospace;
+  font-size: 0.85em;
+  color: #ddd;
+  min-width: 32px;
+  text-align: center;
+}
+
+/* ── FORMULA BOX ── */
+.formula {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--gold);
+  border-radius: 4px;
+  padding: 10px 14px;
+  font-family: monospace;
+  font-size: 0.88em;
+  color: #adf;
+  margin: 8px 0;
+}
+
+/* ── STAT PILL ── */
+.stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.stat-pill {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 0.8em;
+}
+.stat-pill .lbl { color: var(--muted); margin-right: 4px; }
+.stat-pill .val { color: var(--text); font-weight: 600; }
+
+/* ── COLOR SWATCH ── */
+.swatch {
+  display: inline-block;
+  width: 12px; height: 12px;
+  border-radius: 2px;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+/* ── HIGHLIGHT BOXES ── */
+.info-box {
+  background: rgba(64,160,224,0.08);
+  border: 1px solid rgba(64,160,224,0.2);
+  border-radius: 5px;
+  padding: 12px 16px;
+  margin: 12px 0;
+  font-size: 0.88em;
+  color: #aad;
+}
+.warn-box {
+  background: rgba(224,128,48,0.08);
+  border: 1px solid rgba(224,128,48,0.2);
+  border-radius: 5px;
+  padding: 12px 16px;
+  margin: 12px 0;
+  font-size: 0.88em;
+  color: #eca;
+}
+
+/* ── MISC ── */
+.muted { color: var(--muted); }
+.gold  { color: var(--gold); }
+.green { color: var(--green); }
+.red   { color: var(--red); }
+p { margin-bottom: 8px; }
+ul { padding-left: 18px; margin-bottom: 8px; }
+li { margin-bottom: 3px; }
+hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+/* ── FOOTER ── */
+footer {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.78em;
+  padding: 24px 0;
+  border-top: 1px solid var(--border);
+  margin-top: 48px;
+}
+</style>
+</head>
+<body>
+
+<div class="doc-header">
+  <h1>⚔ Guild Wars PvP Prototype</h1>
+  <div class="subtitle">Documentation complète — Mécaniques · Classes · Skills · Builds · Maps</div>
+  <div class="version-badge">HTML5 Canvas · 10 classes · 20 builds · ~55 skills · 3 maps</div>
+</div>
+
+<nav>
+  <a href="#overview">Vue d'ensemble</a>
+  <a href="#controls">Contrôles</a>
+  <a href="#combat">Combat</a>
+  <a href="#statuses">États</a>
+  <a href="#classes">Classes</a>
+  <a href="#skills">Skills</a>
+  <a href="#builds">Builds</a>
+  <a href="#maps">Maps</a>
+  <a href="#flagstand">Flag Stand</a>
+  <a href="#ai">IA</a>
+</nav>
+
+<div class="page-wrap">
+
+  <!-- SECTION 1 : VUE D'ENSEMBLE -->
+  <section class="section" id="overview">
+    <div class="section-title">Vue d'ensemble</div>
+    <!-- contenu étape 2 -->
+  </section>
+
+  <!-- SECTION 2 : CONTRÔLES -->
+  <section class="section" id="controls">
+    <div class="section-title">Contrôles</div>
+    <!-- contenu étape 2 -->
+  </section>
+
+  <!-- SECTION 3 : MÉCANIQUE DE COMBAT -->
+  <section class="section" id="combat">
+    <div class="section-title">Mécanique de combat</div>
+    <!-- contenu étape 2 -->
+  </section>
+
+  <!-- SECTION 4 : CONDITIONS / MALÉFICES / ENCHANTEMENTS -->
+  <section class="section" id="statuses">
+    <div class="section-title">États de statut</div>
+    <!-- contenu étape 2 -->
+  </section>
+
+  <!-- SECTION 5 : CLASSES -->
+  <section class="section" id="classes">
+    <div class="section-title">Classes <span>10 classes jouables</span></div>
+    <!-- contenu étape 3 -->
+  </section>
+
+  <!-- SECTION 6 : SKILLS -->
+  <section class="section" id="skills">
+    <div class="section-title">Skills <span>~55 compétences</span></div>
+    <!-- contenu étape 4 -->
+  </section>
+
+  <!-- SECTION 7 : BUILDS -->
+  <section class="section" id="builds">
+    <div class="section-title">Builds jouables <span>20 builds</span></div>
+    <!-- contenu étape 5 -->
+  </section>
+
+  <!-- SECTION 8 : MAPS -->
+  <section class="section" id="maps">
+    <div class="section-title">Maps <span>3 arènes</span></div>
+    <!-- contenu étape 5 -->
+  </section>
+
+  <!-- SECTION 9 : FLAG STAND -->
+  <section class="section" id="flagstand">
+    <div class="section-title">Flag Stand & Moral</div>
+    <!-- contenu étape 5 -->
+  </section>
+
+  <!-- SECTION 10 : IA -->
+  <section class="section" id="ai">
+    <div class="section-title">Intelligence Artificielle</div>
+    <!-- contenu étape 5 -->
+  </section>
+
+</div>
+
+<footer>
+  Guild Wars PvP Prototype — Documentation générée automatiquement
+</footer>
+
+</body>
+</html>
