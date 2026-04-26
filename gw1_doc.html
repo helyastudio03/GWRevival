@@ -821,7 +821,146 @@ footer {
   <!-- SECTION 6 : SKILLS -->
   <section class="section" id="skills">
     <div class="section-title">Skills <span>~55 compétences</span></div>
-    <!-- contenu étape 4 -->
+    <p>Chaque compétence a un coût en énergie, un temps d'incantation, un temps de rechargement et une portée. Les compétences <span class="badge badge-elite">ÉLITE</span> sont plus puissantes mais une seule peut être équipée par build (elles sont signalées dans les builds).</p>
+
+    <!-- GUERRIER -->
+    <div class="subsection-title"><span class="class-warrior">⚔ Guerrier</span></div>
+    <div class="tbl-wrap"><table>
+      <tr><th>Icône</th><th>Nom</th><th>E</th><th>Cast</th><th>CD</th><th>Portée</th><th>Description</th></tr>
+      <tr><td>⚔️</td><td>Auto-Attaque <span class="badge badge-util">TOGGLE</span></td><td>0</td><td>—</td><td>—</td><td>130</td><td>Attaque de base corps-à-corps. Cécité = 90% de rate.</td></tr>
+      <tr><td>🗡️</td><td>Éviscération <span class="badge badge-elite">ÉLITE</span></td><td>5</td><td>—</td><td>10s</td><td>130</td><td>+18–22 dégâts + Hémorragie 15s.</td></tr>
+      <tr><td>✂️</td><td>Entaille</td><td>4</td><td>—</td><td>5s</td><td>130</td><td>+5–10 dégâts. Si cible saigne → Blessure Profonde 15s.</td></tr>
+      <tr><td>🐂</td><td>Charge du Taureau</td><td>5</td><td>—</td><td>8s</td><td>130</td><td>+8–12 dégâts. Renverse si la cible se déplace.</td></tr>
+      <tr><td>💨</td><td>Sprint</td><td>5</td><td>—</td><td>20s</td><td>—</td><td>Vitesse +33% pendant 14s.</td></tr>
+      <tr><td>😤</td><td>Frénésie <span class="badge badge-util">TOGGLE</span></td><td>5</td><td>—</td><td>—</td><td>—</td><td>Vitesse d'attaque ×2, dégâts reçus ×2. Toggle.</td></tr>
+      <tr><td>⚡</td><td>Choc</td><td>10</td><td>—</td><td>15s</td><td>140</td><td>Renverse + interrompt l'incantation ennemie.</td></tr>
+      <tr><td>🌀</td><td>Hache Cyclone</td><td>5</td><td>—</td><td>5s</td><td>160</td><td>Frappe tous les ennemis adjacents (AoE mêlée).</td></tr>
+      <tr><td>🤲</td><td>Signet de Guérison</td><td>0</td><td>2s</td><td>4s</td><td>—</td><td>Se soigne de 82 PV.</td></tr>
+      <tr><td>🔨</td><td>Marteau Dévastateur <span class="badge badge-elite">ÉLITE</span></td><td>5</td><td>—</td><td>6s</td><td>130</td><td>28–40 dégâts + Renversement + Faiblesse 5s + interrompt.</td></tr>
+      <tr><td>💢</td><td>Coup Écrasant</td><td>4</td><td>—</td><td>4s</td><td>130</td><td>22–34 dégâts. Blessure Profonde si cible est renversée.</td></tr>
+      <tr><td>🐉</td><td>Taillade du Dragon <span class="badge badge-elite">ÉLITE</span></td><td>5</td><td>—</td><td>4s</td><td>130</td><td>Frappe jusqu'à 3 ennemis adjacents.</td></tr>
+      <tr><td>💨</td><td>Rush</td><td>5</td><td>—</td><td>12s</td><td>—</td><td>Vitesse +33% 8s. Annule aussi la Frénésie active.</td></tr>
+      <tr><td>✨</td><td>Signet de Résurrection <span class="badge badge-util">1×</span></td><td>0</td><td>3s</td><td>—</td><td>—</td><td>Ressuscite un allié mort à 25% PV (usage unique).</td></tr>
+    </table></div>
+
+    <!-- MOINE -->
+    <div class="subsection-title"><span class="class-monk">✚ Moine</span></div>
+    <div class="tbl-wrap"><table>
+      <tr><th>Icône</th><th>Nom</th><th>E</th><th>Cast</th><th>CD</th><th>Portée</th><th>Description</th></tr>
+      <tr><td>💊</td><td>Parole de Guérison <span class="badge badge-heal">SOIN</span></td><td>5</td><td>0.25s</td><td>3s</td><td>500</td><td>80–120 PV instantanés (×1.5 si cible &lt;50% PV).</td></tr>
+      <tr><td>💚</td><td>Prière de Guérison <span class="badge badge-heal">SOIN</span></td><td>5</td><td>1s</td><td>2s</td><td>500</td><td>Soigne 90 PV.</td></tr>
+      <tr><td>🙏</td><td>Oraison de Guérison <span class="badge badge-heal">SOIN</span></td><td>4</td><td>0.75s</td><td>2s</td><td>500</td><td>Soigne 60 PV.</td></tr>
+      <tr><td>🧿</td><td>Suppression d'État <span class="badge badge-heal">SOIN</span></td><td>5</td><td>0.25s</td><td>2s</td><td>500</td><td>Supprime 2 conditions sur un allié.</td></tr>
+      <tr><td>🛡️</td><td>Esprit Protecteur <span class="badge badge-ench">ENCHANT</span></td><td>10</td><td>1s</td><td>5s</td><td>500</td><td>10s : chaque coup plafonné à 10% des PV max de la cible.</td></tr>
+      <tr><td>🔵</td><td>Gardien <span class="badge badge-ench">ENCHANT</span></td><td>5</td><td>0.5s</td><td>2s</td><td>500</td><td>5s : 50% de chance de bloquer les attaques physiques.</td></tr>
+      <tr><td>☀️</td><td>Intervention Divine <span class="badge badge-ench">ENCHANT</span></td><td>10</td><td>0.5s</td><td>8s</td><td>500</td><td>Absorbe le prochain coup fatal (PV → 1).</td></tr>
+      <tr><td>💉</td><td>Santé Insufflée <span class="badge badge-elite">ÉLITE</span> <span class="badge badge-heal">SOIN</span></td><td>10</td><td>0.25s</td><td>3s</td><td>500</td><td>Sacrifie 50% de ses PV pour soigner 200 PV sur un allié.</td></tr>
+      <tr><td>🔄</td><td>Renversement du Destin <span class="badge badge-ench">ENCHANT</span></td><td>5</td><td>—</td><td>3s</td><td>500</td><td>Prochain coup → 0 dégâts + soigne la cible à la place.</td></tr>
+      <tr><td>🔗</td><td>Lien Spirituel <span class="badge badge-ench">ENCHANT</span></td><td>10</td><td>1s</td><td>15s</td><td>500</td><td>10s : soigne 82 PV à chaque coup &gt;60 dégâts reçus.</td></tr>
+      <tr><td>🧲</td><td>Attirer les Afflictions <span class="badge badge-heal">SOIN</span></td><td>5</td><td>0.25s</td><td>2s</td><td>500</td><td>Transfère toutes les conditions d'un allié sur soi.</td></tr>
+    </table></div>
+
+    <!-- ÉLÉMENTALISTE -->
+    <div class="subsection-title"><span class="class-elementalist">◆ Élémentaliste</span></div>
+    <div class="tbl-wrap"><table>
+      <tr><th>Icône</th><th>Nom</th><th>E</th><th>Cast</th><th>CD</th><th>Portée</th><th>Description</th></tr>
+      <tr><td>✨</td><td>Embrasement</td><td>5</td><td>1s</td><td>—</td><td>500</td><td>Projectile feu rapide : 55–75 dégâts.</td></tr>
+      <tr><td>🔥</td><td>Boule de Feu</td><td>10</td><td>2s</td><td>7s</td><td>500</td><td>AoE feu r=150 : 100–120 dégâts + 30% Brûlure 4s.</td></tr>
+      <tr><td>🌋</td><td>Tempête de Feu</td><td>15</td><td>2s</td><td>30s</td><td>500</td><td>Zone feu 10s : 25–35 dégâts/s à tous dans r=120.</td></tr>
+      <tr><td>⚡</td><td>Frappe de Foudre</td><td>10</td><td>1s</td><td>5s</td><td>500</td><td>Projectile rapide : 80–100 dégâts air.</td></tr>
+      <tr><td>💎</td><td>Prisme de Glace</td><td>10</td><td>1.5s</td><td>8s</td><td>500</td><td>50–70 dégâts froid + Estropié 6s.</td></tr>
+      <tr><td>❄️</td><td>Blizzard</td><td>15</td><td>2s</td><td>30s</td><td>500</td><td>Zone froid 10s : 18–26 dégâts/s + Estropié 3s dans r=150.</td></tr>
+      <tr><td>🌬️</td><td>Bourrasque</td><td>10</td><td>0.25s</td><td>20s</td><td>500</td><td>Renverse instantanément la cible.</td></tr>
+      <tr><td>⚡</td><td>Éclair en Chaîne <span class="badge badge-elite">ÉLITE</span></td><td>10</td><td>1s</td><td>10s</td><td>500</td><td>Foudre rebondissant sur 3 ennemis : 60–80 dégâts chacun.</td></tr>
+      <tr><td>☄️</td><td>Pluie de Météores <span class="badge badge-elite">ÉLITE</span></td><td>25</td><td>3s</td><td>60s</td><td>500</td><td>8 météores espacés de 0.5s : 45–65 dégâts + Renversement 1.5s chacun.</td></tr>
+      <tr><td>🌋</td><td>Invocation de Rodgort</td><td>15</td><td>2s</td><td>20s</td><td>500</td><td>AoE feu r=180 : 90–110 dégâts + Brûlure 7s.</td></tr>
+    </table></div>
+
+    <!-- MESMER -->
+    <div class="subsection-title"><span class="class-mesmer">〜 Illusionniste (Mesmer)</span></div>
+    <div class="tbl-wrap"><table>
+      <tr><th>Icône</th><th>Nom</th><th>E</th><th>Cast</th><th>CD</th><th>Portée</th><th>Description</th></tr>
+      <tr><td>🔇</td><td>Interruption</td><td>5</td><td>—</td><td>8s</td><td>500</td><td>Interrompt l'incantation en cours + 15 dégâts mentaux.</td></tr>
+      <tr><td>💫</td><td>Surtension d'Énergie</td><td>10</td><td>2s</td><td>20s</td><td>500</td><td>Draine 30 énergie ennemie + dégâts = drain×2.</td></tr>
+      <tr><td>🏃</td><td>Hâte Imaginaire <span class="badge badge-hex">MALÉFICE</span></td><td>10</td><td>1s</td><td>20s</td><td>500</td><td>Vitesse cible ×0.5 pendant 10s.</td></tr>
+      <tr><td>💔</td><td>Empathie <span class="badge badge-hex">MALÉFICE</span></td><td>10</td><td>1s</td><td>15s</td><td>500</td><td>−20 PV à chaque attaque physique lancée (10s).</td></tr>
+      <tr><td>💥</td><td>Retour de Flamme <span class="badge badge-hex">MALÉFICE</span></td><td>15</td><td>1s</td><td>20s</td><td>500</td><td>−60 PV à chaque sort lancé (10s).</td></tr>
+      <tr><td>😱</td><td>Cauchemar Conjuré <span class="badge badge-hex">MALÉFICE</span></td><td>10</td><td>2s</td><td>20s</td><td>500</td><td>−7 PV/s + drain 2 énergie/s pendant 8s.</td></tr>
+      <tr><td>👻</td><td>Esprit Rancunier <span class="badge badge-hex">MALÉFICE</span></td><td>15</td><td>2s</td><td>20s</td><td>500</td><td>−30 PV à chaque action de la cible (15s).</td></tr>
+    </table></div>
+
+    <!-- NÉCROMANT -->
+    <div class="subsection-title"><span class="class-necro">☠ Nécromant</span></div>
+    <div class="tbl-wrap"><table>
+      <tr><th>Icône</th><th>Nom</th><th>E</th><th>Cast</th><th>CD</th><th>Portée</th><th>Description</th></tr>
+      <tr><td>👻</td><td>Esprit Rancunier (Nécro) <span class="badge badge-elite">ÉLITE</span> <span class="badge badge-hex">MALÉFICE</span></td><td>15</td><td>2s</td><td>20s</td><td>500</td><td>−30 PV à chaque action de la cible (15s).</td></tr>
+      <tr><td>🎯</td><td>Marque de la Douleur <span class="badge badge-hex">MALÉFICE</span></td><td>5</td><td>1s</td><td>20s</td><td>500</td><td>Chaque coup sur la cible blesse aussi les ennemis adjacents (15s).</td></tr>
+      <tr><td>🦴</td><td>Chair Affaiblie</td><td>10</td><td>1s</td><td>12s</td><td>500</td><td>Hémorragie 15s + Faiblesse 15s.</td></tr>
+      <tr><td>🕷️</td><td>Lien Parasitaire <span class="badge badge-hex">MALÉFICE</span></td><td>5</td><td>0.5s</td><td>5s</td><td>500</td><td>−4 PV/s sur la cible pendant 10s.</td></tr>
+      <tr><td>⚡</td><td>Ordre de la Douleur <span class="badge badge-ench">ENCHANT</span></td><td>5</td><td>—</td><td>—</td><td>500</td><td>Toute l'équipe inflige +5 dégâts physiques pendant 8s.</td></tr>
+      <tr><td>🦋</td><td>Nuée Mortelle</td><td>10</td><td>1s</td><td>5s</td><td>500</td><td>Projectile 60–80 dégâts rebondissant sur 3 ennemis proches.</td></tr>
+    </table></div>
+
+    <!-- RÔDEUR -->
+    <div class="subsection-title"><span class="class-ranger">🏹 Rôdeur</span></div>
+    <div class="tbl-wrap"><table>
+      <tr><th>Icône</th><th>Nom</th><th>E</th><th>Cast</th><th>CD</th><th>Portée</th><th>Description</th></tr>
+      <tr><td>📌</td><td>Tir Estropiant <span class="badge badge-elite">ÉLITE</span></td><td>5</td><td>—</td><td>5s</td><td>500</td><td>14–20 dégâts + Estropié 10s (instantané).</td></tr>
+      <tr><td>🔥</td><td>Flèche Enflammée <span class="badge badge-elite">ÉLITE</span></td><td>5</td><td>—</td><td>7s</td><td>500</td><td>20–28 dégâts + Brûlure 7s.</td></tr>
+      <tr><td>☠️</td><td>Application de Poison <span class="badge badge-ench">ENCHANT</span></td><td>4</td><td>0.5s</td><td>12s</td><td>—</td><td>12s : prochaines attaques empoisonnent la cible.</td></tr>
+      <tr><td>🏹</td><td>Barrage</td><td>5</td><td>—</td><td>3s</td><td>500</td><td>Frappe tous les ennemis à portée simultanément : 12–18 dégâts chacun.</td></tr>
+      <tr><td>🎯</td><td>Tir Distrayant</td><td>5</td><td>—</td><td>10s</td><td>500</td><td>10–16 dégâts + interrompt l'incantation ennemie.</td></tr>
+    </table></div>
+
+    <!-- ASSASSIN -->
+    <div class="subsection-title"><span class="class-assassin">✕ Assassin</span></div>
+    <div class="tbl-wrap"><table>
+      <tr><th>Icône</th><th>Nom</th><th>E</th><th>Cast</th><th>CD</th><th>Portée</th><th>Description</th></tr>
+      <tr><td>🌑</td><td>Prison des Ombres <span class="badge badge-elite">ÉLITE</span></td><td>10</td><td>—</td><td>20s</td><td>500</td><td>Téléportation instantanée sur la cible + Estropié 5s.</td></tr>
+      <tr><td>🗡️</td><td>Frappe Dorée <span class="badge badge-util">CONDUITE</span></td><td>5</td><td>—</td><td>8s</td><td>130</td><td>22–32 dégâts + Cécité 5s. Active le combo.</td></tr>
+      <tr><td>🐂</td><td>Cornes du Bœuf <span class="badge badge-util">SECONDE</span></td><td>5</td><td>—</td><td>8s</td><td>130</td><td>20–30 dégâts + Renversement si cible se déplace.</td></tr>
+      <tr><td>🌸</td><td>Floraison Mortelle <span class="badge badge-util">DUALE</span></td><td>10</td><td>—</td><td>8s</td><td>130</td><td>28–40 dégâts sur la cible + tous les ennemis adjacents.</td></tr>
+      <tr><td>🦷</td><td>Crocs Tordus <span class="badge badge-util">DUALE</span></td><td>10</td><td>—</td><td>10s</td><td>130</td><td>35–50 dégâts + Hémorragie 15s + Blessure Profonde 15s.</td></tr>
+      <tr><td>⚔️</td><td>Frappe Critique <span class="badge badge-elite">ÉLITE</span></td><td>5</td><td>—</td><td>6s</td><td>130</td><td>40–56 dégâts garantis + regain de 8 énergie.</td></tr>
+      <tr><td>💨</td><td>Esquive</td><td>5</td><td>—</td><td>15s</td><td>—</td><td>Vitesse +66% pendant 3s.</td></tr>
+    </table></div>
+
+    <!-- RITUALISTE -->
+    <div class="subsection-title"><span class="class-ritualist">⊙ Ritualiste</span></div>
+    <div class="tbl-wrap"><table>
+      <tr><th>Icône</th><th>Nom</th><th>E</th><th>Cast</th><th>CD</th><th>Portée</th><th>Description</th></tr>
+      <tr><td>🌿</td><td>Soigner Corps et Âme <span class="badge badge-heal">SOIN</span></td><td>5</td><td>0.5s</td><td>3s</td><td>500</td><td>80 PV + supprime 1 condition par esprit actif.</td></tr>
+      <tr><td>🛡️</td><td>Arme de Protection <span class="badge badge-ench">ENCHANT</span></td><td>5</td><td>—</td><td>8s</td><td>500</td><td>8s : 50% blocage + régén 7 PV/s.</td></tr>
+      <tr><td>💎</td><td>Arme Éclat <span class="badge badge-ench">ENCHANT</span></td><td>10</td><td>0.5s</td><td>10s</td><td>500</td><td>10s : prochaines attaques causent 30 dégâts AoE autour de la cible.</td></tr>
+      <tr><td>🔥</td><td>Rage des Ancêtres</td><td>5</td><td>—</td><td>8s</td><td>500</td><td>AoE instantané r=150 : 60–90 dégâts à tous les ennemis proches de la cible.</td></tr>
+      <tr><td>🎵</td><td>Chant de Sang <span class="badge badge-util">ESPRIT</span></td><td>10</td><td>2s</td><td>30s</td><td>500</td><td>Esprit 30s : toutes les 3s, 30–40 dégâts à tous les ennemis dans r=200.</td></tr>
+      <tr><td>⛺</td><td>Abri <span class="badge badge-util">ESPRIT</span></td><td>15</td><td>2s</td><td>30s</td><td>500</td><td>Esprit 30s : −25% dégâts reçus pour les alliés dans r=250.</td></tr>
+    </table></div>
+
+    <!-- DERVICHE -->
+    <div class="subsection-title"><span class="class-dervish">☽ Derviche</span></div>
+    <div class="tbl-wrap"><table>
+      <tr><th>Icône</th><th>Nom</th><th>E</th><th>Cast</th><th>CD</th><th>Portée</th><th>Description</th></tr>
+      <tr><td>🌿</td><td>Avatar de Mélandru <span class="badge badge-elite">ÉLITE</span> <span class="badge badge-ench">ENCHANT</span></td><td>15</td><td>2s</td><td>30s</td><td>—</td><td>20s : immunité conditions + attaques touchent 3 ennemis.</td></tr>
+      <tr><td>⚔️</td><td>Balayage du Faucheur</td><td>5</td><td>—</td><td>6s</td><td>160</td><td>24–34 dégâts + Hémorragie 10s sur tous les ennemis adjacents.</td></tr>
+      <tr><td>🌀</td><td>Balayage Mystique</td><td>5</td><td>—</td><td>4s</td><td>160</td><td>AoE 20–30 dégâts. Renverse si ≥2 enchantements actifs.</td></tr>
+      <tr><td>💥</td><td>Assaut Pieux</td><td>5</td><td>—</td><td>8s</td><td>160</td><td>40–58 dégâts. Supprime un enchantement sur soi au passage.</td></tr>
+      <tr><td>❄️</td><td>Victoire Glaciale</td><td>5</td><td>—</td><td>5s</td><td>160</td><td>AoE 20–28 dégâts (×1.6 si la cible a moins de PV que soi).</td></tr>
+      <tr><td>💚</td><td>Régénération Mystique <span class="badge badge-ench">ENCHANT</span></td><td>5</td><td>0.5s</td><td>8s</td><td>—</td><td>+40 PV/s × nb enchantements actifs pendant 3–9s.</td></tr>
+    </table></div>
+
+    <!-- PARAGONE -->
+    <div class="subsection-title"><span class="class-paragon">⟋ Paragone</span></div>
+    <div class="tbl-wrap"><table>
+      <tr><th>Icône</th><th>Nom</th><th>E</th><th>Cast</th><th>CD</th><th>Portée</th><th>Description</th></tr>
+      <tr><td>🛡️</td><td>"Rien à Craindre!" <span class="badge badge-elite">ÉLITE</span> <span class="badge badge-ench">CRI</span></td><td>4</td><td>—</td><td>8s</td><td>300</td><td>5s : dégâts reçus ×0.5 pour tous les alliés proches.</td></tr>
+      <tr><td>🔥</td><td>Hymne de Flamme <span class="badge badge-ench">CRI</span></td><td>4</td><td>—</td><td>6s</td><td>300</td><td>Prochaine attaque de chaque allié proche inflige Brûlure 3s.</td></tr>
+      <tr><td>⚔️</td><td>"Tenez Bon!" <span class="badge badge-ench">CRI</span></td><td>4</td><td>—</td><td>10s</td><td>300</td><td>+24 armure pour tous les alliés proches pendant 7s.</td></tr>
+      <tr><td>💨</td><td>"En Arrière!" <span class="badge badge-ench">CRI</span></td><td>4</td><td>—</td><td>15s</td><td>350</td><td>Sprint +33% pour toute l'équipe proche pendant 7s.</td></tr>
+      <tr><td>👁️</td><td>"Visez les Yeux!" <span class="badge badge-ench">CRI</span></td><td>4</td><td>—</td><td>8s</td><td>300</td><td>Prochaine attaque de chaque allié peut aveugler (Cécité).</td></tr>
+      <tr><td>⚡</td><td>Lance de Foudre</td><td>5</td><td>—</td><td>4s</td><td>500</td><td>50–70 dégâts foudre + Faiblesse 5s sur la cible.</td></tr>
+    </table></div>
+
   </section>
 
   <!-- SECTION 7 : BUILDS -->
