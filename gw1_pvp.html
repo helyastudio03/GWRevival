@@ -137,10 +137,46 @@ canvas#arena { border: 2px solid #444; cursor: crosshair; display: block; }
 <div id="class-select">
   <label>Classe :</label>
   <select id="class-picker">
-    <option value="warrior">Warrior / Élémentaliste</option>
-    <option value="monk">Moine / Guerrier</option>
-    <option value="elementalist">Élémentaliste / Mage</option>
-    <option value="mesmer">Illusionniste / Nécromant</option>
+    <optgroup label="⚔ Guerrier">
+      <option value="w_eviscerate">Guerrier — Éviscération (Axe)</option>
+      <option value="w_hammer">Guerrier — Marteau (Knockdown)</option>
+    </optgroup>
+    <optgroup label="✚ Moine">
+      <option value="mo_woh">Moine — Guérison (WoH)</option>
+      <option value="mo_prot">Moine — Protection (Prot)</option>
+    </optgroup>
+    <optgroup label="◆ Élémentaliste">
+      <option value="e_airspike">Élémentaliste — Foudre (Air Spike)</option>
+      <option value="e_fireaoe">Élémentaliste — Feu (AoE Fire)</option>
+    </optgroup>
+    <optgroup label="≋ Illusionniste">
+      <option value="me_eDenial">Illusionniste — Privation d'Énergie</option>
+      <option value="me_domination">Illusionniste — Domination</option>
+    </optgroup>
+    <optgroup label="☠ Nécromant">
+      <option value="n_ss">Nécromant — SS / Maléfices</option>
+      <option value="n_blood">Nécromant — Sang</option>
+    </optgroup>
+    <optgroup label="→ Rôdeur">
+      <option value="r_cripshot">Rôdeur — Crippling Shot</option>
+      <option value="r_burning">Rôdeur — Burning Arrow</option>
+    </optgroup>
+    <optgroup label="✕ Assassin">
+      <option value="a_sp">Assassin — Shadow Prison</option>
+      <option value="a_critical">Assassin — Critical Strikes</option>
+    </optgroup>
+    <optgroup label="⊕ Ritualiste">
+      <option value="rt_resto">Ritualiste — Restoration</option>
+      <option value="rt_splinter">Ritualiste — Splinter Weapon</option>
+    </optgroup>
+    <optgroup label="☽ Derviche">
+      <option value="d_melandru">Derviche — Avatar de Mélandru</option>
+      <option value="d_scythe">Derviche — Pression Faux</option>
+    </optgroup>
+    <optgroup label="♦ Paragone">
+      <option value="p_tntf">Paragone — TNTF / Soutien</option>
+      <option value="p_motivation">Paragone — Motivation</option>
+    </optgroup>
   </select>
   <button id="start-btn" onclick="startGame()">▶ Lancer</button>
 </div>
@@ -710,6 +746,525 @@ const SK = {
       addHex(tgt, 'spiteful_spirit', 15, g);
     }
   },
+
+  // ── WARRIOR supplémentaires ──────────────────────────────────────
+  w_devastatinghammer: {
+    name:'Marteau Dévastateur', icon:'🔨', cost:5, cast:0, recharge:6, range:130, elite:true,
+    desc:'[Élite] Renverse + Faiblesse + interrompt',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      if (hasCond(me,'blind') && Math.random()<0.9) { g.log(`${me.name} rate (Cécité)!`,'log-sys'); return; }
+      const d = calcPhysDmg(me, tgt, 28, 40);
+      dealDmg(me, tgt, d, 'physique', g);
+      addCond(tgt,'knockdown',2,g); addCond(tgt,'weakness',5,g);
+      if (tgt.casting) { tgt.casting=null; tgt.castTimer=0; g.log(`${me.name} interrompt ${tgt.name}!`,'log-sys'); }
+      spawnFx(g, tgt.x, tgt.y,'#fc0',70,0.5);
+    }
+  },
+  w_crushingblow: {
+    name:'Coup Écrasant', icon:'💢', cost:4, cast:0, recharge:4, range:130,
+    desc:'Frappe + Blessure Profonde si la cible est renversée',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      if (hasCond(me,'blind') && Math.random()<0.9) return;
+      const d = calcPhysDmg(me, tgt, 22, 34);
+      dealDmg(me, tgt, d, 'physique', g);
+      if (hasCond(tgt,'knockdown')) addCond(tgt,'deepwound',12,g);
+    }
+  },
+  w_dragonslash: {
+    name:'Taillade du Dragon', icon:'🐉', cost:5, cast:0, recharge:4, range:130, elite:true,
+    desc:'[Élite] Frappe jusqu\'à 3 ennemis adjacents',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      let hit = 0;
+      for (const e of getEnemies(me,g)) {
+        if (dist(me,e)<160) { const d=calcPhysDmg(me,e,22,30); dealDmg(me,e,d,'physique',g); hit++; if(hit>=3)break; }
+      }
+      spawnFx(g, me.x, me.y,'#f80',160,0.4);
+    }
+  },
+  w_rush: {
+    name:'Rush', icon:'💨', cost:5, cast:0, recharge:12,
+    desc:'Vitesse +33% pendant 8s (annule Frénésie)',
+    use(me, tgt, g) {
+      if (hasEnch(me,'frenzy')) { delete me.enchantments.frenzy; g.log(`${me.name} annule Frénésie`,'log-sys'); }
+      addEnch(me,'sprint',8,g); g.log(`${me.name} active Rush!`,'log-sys');
+    }
+  },
+
+  // ── MONK supplémentaires ─────────────────────────────────────────
+  mo_infuse: {
+    name:'Santé Insufflée', icon:'💉', cost:10, cast:0.25, recharge:3, range:500, isHeal:true, elite:true,
+    desc:'[Élite] Sacrifie 50% PV propres pour soigner 200 PV',
+    use(me, tgt, g) {
+      const t = (tgt && !isEnemy(me,tgt)) ? tgt : me;
+      const sacrifice = Math.floor(me.hp * 0.5);
+      me.hp = Math.max(1, me.hp - sacrifice);
+      const heal = Math.min(200 + (me.healBonus||0), t.maxHp - t.hp);
+      t.hp = Math.min(t.maxHp, t.hp + heal);
+      g.log(`${me.name} infuse ${heal} PV sur ${t.name} (sacrifice ${sacrifice})`, 'log-heal');
+      spawnFx(g, t.x, t.y,'#8ff',60,0.6);
+    }
+  },
+  mo_reversalfortune: {
+    name:'Renversement du Destin', icon:'🔄', cost:5, cast:0, recharge:3, range:500, isHeal:true,
+    desc:'Enchantement: prochain coup inflige 0 et soigne à la place',
+    use(me, tgt, g) {
+      const t = (tgt && !isEnemy(me,tgt)) ? tgt : me;
+      addEnch(t,'reversal_of_fortune',8,g);
+      g.log(`${me.name} applique Renversement du Destin sur ${t.name}`,'log-heal');
+      spawnFx(g, t.x, t.y,'#0ff',45,0.5);
+    }
+  },
+  mo_spiritbond: {
+    name:'Lien Spirituel', icon:'🔗', cost:10, cast:1, recharge:15, range:500, isHeal:true,
+    desc:'Enchantement 10s: guérit 82 PV à chaque coup >60 dégâts reçus',
+    use(me, tgt, g) {
+      const t = (tgt && !isEnemy(me,tgt)) ? tgt : me;
+      addEnch(t,'spirit_bond',10,g);
+      g.log(`${me.name} protège ${t.name} (Lien Spirituel)`,'log-heal');
+      spawnFx(g, t.x, t.y,'#fff',55,0.7);
+    }
+  },
+  mo_drawconditions: {
+    name:'Attirer les Afflictions', icon:'🧲', cost:5, cast:0.25, recharge:2, range:500, isHeal:true,
+    desc:'Transfère toutes les conditions d\'un allié sur soi',
+    use(me, tgt, g) {
+      const t = (tgt && !isEnemy(me,tgt) && tgt!==me) ? tgt : getAllies(me,g).find(a=>Object.keys(a.conditions).length>0);
+      if (!t) return;
+      let n=0;
+      for (const k of Object.keys(t.conditions)) { me.conditions[k]={...t.conditions[k]}; delete t.conditions[k]; n++; }
+      if(n>0) g.log(`${me.name} absorbe ${n} condition(s) de ${t.name}`,'log-heal');
+      spawnFx(g,t.x,t.y,'#ff8',40,0.4);
+    }
+  },
+
+  // ── ELEMENTALISTE supplémentaires ────────────────────────────────
+  e_chainlightning: {
+    name:'Éclair en Chaîne', icon:'⚡', cost:10, cast:1, recharge:10, range:500, elite:true,
+    desc:'[Élite] Foudre sautant sur 3 ennemis proches',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      const targets=[tgt]; let last=tgt;
+      for (const e of getEnemies(me,g)) { if(e!==tgt && dist(last,e)<250 && targets.length<3) { targets.push(e); last=e; } }
+      for (const t of targets) {
+        const d=calcSpellDmg(me,t,60,80); dealDmg(me,t,d,'foudre',g);
+        spawnFx(g,t.x,t.y,'#ff0',50,0.4);
+      }
+      spawnProj(g,me,tgt.x,tgt.y,'#ff0',700,()=>{});
+    }
+  },
+  e_meteorshower: {
+    name:'Pluie de Météores', icon:'☄️', cost:25, cast:3, recharge:60, range:500, elite:true,
+    desc:'[Élite] Zone massive: 8 météores, renversements',
+    use(me, tgt, g) {
+      if (!tgt) return;
+      const tx=tgt.x, ty=tgt.y;
+      g.log(`${me.name} invoque une Pluie de Météores!`,'log-dmg');
+      let strikes=0;
+      const iv = setInterval(()=>{
+        if(strikes>=8||game.over){clearInterval(iv);return;}
+        for(const e of getEnemies(me,g)){
+          if(dist({x:tx,y:ty},e)<170){ const d=calcSpellDmg(me,e,45,65,'fire'); dealDmg(me,e,d,'feu',g); addCond(e,'knockdown',1.5,g); }
+        }
+        spawnFx(g,tx+(Math.random()-0.5)*100,ty+(Math.random()-0.5)*100,'#f40',100,0.6);
+        strikes++;
+      },500);
+    }
+  },
+  e_rodgorts: {
+    name:'Invocation de Rodgort', icon:'🌋', cost:15, cast:2, recharge:20, range:500,
+    desc:'AoE feu + Brûlure 7s sur tout le monde dans la zone',
+    use(me, tgt, g) {
+      if (!tgt) return;
+      const tx=tgt.x, ty=tgt.y;
+      spawnProj(g,me,tx,ty,'#f60',350,()=>{
+        spawnFx(g,tx,ty,'#f40',180,0.9);
+        for(const e of getEnemies(me,g)){
+          if(dist({x:tx,y:ty},e)<180){ const d=calcSpellDmg(me,e,90,110,'fire'); dealDmg(me,e,d,'feu',g); addCond(e,'burning',7,g); }
+        }
+      });
+      g.log(`${me.name} lance Invocation de Rodgort!`,'log-dmg');
+    }
+  },
+
+  // ── NECROMANT (classe jouable) ───────────────────────────────────
+  n_spitefulspirit: {
+    name:'Esprit Rancunier', icon:'👻', cost:15, cast:2, recharge:20, range:500, elite:true,
+    desc:'[Élite] Maléfice: 30 dégâts à chaque action de la cible',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      addHex(tgt,'spiteful_spirit',15,g);
+      g.log(`${me.name} applique Esprit Rancunier sur ${tgt.name}`,'log-hex');
+    }
+  },
+  n_markofpain: {
+    name:'Marque de la Douleur', icon:'🎯', cost:5, cast:1, recharge:20, range:500,
+    desc:'Maléfice: chaque coup sur la cible blesse aussi les ennemis adjacents',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      addHex(tgt,'mark_of_pain',15,g);
+      g.log(`${me.name} marque ${tgt.name} (Marque de la Douleur)`,'log-hex');
+    }
+  },
+  n_weakenflesh: {
+    name:'Chair Affaiblie', icon:'🦴', cost:10, cast:1, recharge:12, range:500,
+    desc:'Inflige Hémorragie 15s + Faiblesse 15s',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      addCond(tgt,'bleeding',15,g); addCond(tgt,'weakness',15,g);
+      spawnFx(g,tgt.x,tgt.y,'#4a4',50,0.5);
+    }
+  },
+  n_parasitic: {
+    name:'Lien Parasitaire', icon:'🕷️', cost:5, cast:0.5, recharge:5, range:500,
+    desc:'Maléfice 10s: 4 dégâts/s, soigne le lanceur',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      tgt.hexes.parasitic_bond = { timer:10, caster:me };
+      g.log(`${me.name} attache ${tgt.name} (Lien Parasitaire)`,'log-hex');
+    }
+  },
+  n_orderpain: {
+    name:'Ordre de la Douleur', icon:'⚡', cost:5, cast:0, recharge:0, range:500,
+    desc:'Enchantement: alliés infligent +5 dégâts physiques pendant 8s',
+    use(me, tgt, g) {
+      for(const a of [me,...getAllies(me,g)]) addEnch(a,'order_of_pain',8,g);
+      g.log(`${me.name} active Ordre de la Douleur!`,'log-heal');
+      spawnFx(g,me.x,me.y,'#a44',100,0.6);
+    }
+  },
+  n_deathlyswarm: {
+    name:'Nuée Mortelle', icon:'🦋', cost:10, cast:1, recharge:5, range:500,
+    desc:'Projectile: 80 dégâts, rebondit sur 2 ennemis proches',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      const targets=[tgt];
+      for(const e of getEnemies(me,g)){ if(e!==tgt&&dist(tgt,e)<220&&targets.length<3) targets.push(e); }
+      spawnProj(g,me,targets[0].x,targets[0].y,'#4a4',400,()=>{
+        for(const t of targets){ const d=calcSpellDmg(me,t,60,80); dealDmg(me,t,d,'nécromancie',g); spawnFx(g,t.x,t.y,'#4a4',45,0.4); }
+      });
+    }
+  },
+
+  // ── RODEUR (classe jouable) ──────────────────────────────────────
+  r_cripplingshot: {
+    name:'Tir Estropiant', icon:'📌', cost:5, cast:0, recharge:5, range:500, elite:true,
+    desc:'[Élite] Tir instantané: Estropié 10s',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      if (hasCond(me,'blind')&&Math.random()<0.9) return;
+      const d=calcPhysDmg(me,tgt,14,20); dealDmg(me,tgt,d,'physique',g);
+      addCond(tgt,'crippled',10,g);
+      spawnProj(g,me,tgt.x,tgt.y,'#ca4',600,()=>{});
+    }
+  },
+  r_burningarrow: {
+    name:'Flèche Enflammée', icon:'🔥', cost:5, cast:0, recharge:7, range:500, elite:true,
+    desc:'[Élite] Brûlure 7s sur la cible',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      if (hasCond(me,'blind')&&Math.random()<0.9) return;
+      const d=calcPhysDmg(me,tgt,20,28); dealDmg(me,tgt,d,'physique',g);
+      addCond(tgt,'burning',7,g);
+      spawnProj(g,me,tgt.x,tgt.y,'#f60',600,()=>{});
+    }
+  },
+  r_applypoison: {
+    name:'Application de Poison', icon:'☠️', cost:4, cast:0.5, recharge:12,
+    desc:'Enchantement 12s: prochaines attaques empoisonnent',
+    use(me, tgt, g) { addEnch(me,'apply_poison',12,g); g.log(`${me.name} prépare Poison`,'log-sys'); }
+  },
+  r_barrage: {
+    name:'Barrage', icon:'🏹', cost:5, cast:0, recharge:3, range:500,
+    desc:'Frappe tous les ennemis dans la direction de la cible',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      let hit=0;
+      for(const e of getEnemies(me,g)){
+        if(dist(me,e)<=500){ const d=calcPhysDmg(me,e,12,18); dealDmg(me,e,d,'physique',g); hit++; }
+      }
+      spawnFx(g,me.x,me.y,'#ca4',200,0.4);
+      g.log(`${me.name} Barrage — ${hit} cibles!`,'log-dmg');
+    }
+  },
+  r_distractingshot: {
+    name:'Tir Distrayant', icon:'🎯', cost:5, cast:0, recharge:10, range:500,
+    desc:'Interrompt + recharge pénalisée',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      const d=calcPhysDmg(me,tgt,10,16); dealDmg(me,tgt,d,'physique',g);
+      if(tgt.casting){ tgt.casting=null; tgt.castTimer=0; g.log(`${me.name} interrompt ${tgt.name}!`,'log-hex'); }
+      spawnProj(g,me,tgt.x,tgt.y,'#ca4',600,()=>{});
+    }
+  },
+
+  // ── ASSASSIN ────────────────────────────────────────────────────
+  a_shadowprison: {
+    name:'Prison des Ombres', icon:'🌑', cost:10, cast:0, recharge:20, range:500, elite:true,
+    desc:'[Élite] Téléportation sur la cible + Estropié 5s',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      const ox=me.x, oy=me.y;
+      me.x=tgt.x+(Math.random()-0.5)*40; me.y=tgt.y+(Math.random()-0.5)*40;
+      addCond(tgt,'crippled',5,g);
+      spawnFx(g,ox,oy,'#008',60,0.5); spawnFx(g,me.x,me.y,'#44f',60,0.5);
+      g.log(`${me.name} se téléporte sur ${tgt.name}!`,'log-sys');
+    }
+  },
+  a_goldenfang: {
+    name:'Frappe Dorée (Conduite)', icon:'🗡️', cost:5, cast:0, recharge:8, range:130,
+    desc:'Attaque conduite: Cécité 5s',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      if (hasCond(me,'blind')&&Math.random()<0.9) return;
+      const d=calcPhysDmg(me,tgt,22,32); dealDmg(me,tgt,d,'physique',g);
+      addCond(tgt,'blind',5,g); me._lastAttackType='lead';
+    }
+  },
+  a_hornsofox: {
+    name:'Cornes du Bœuf (Seconde)', icon:'🐂', cost:5, cast:0, recharge:8, range:130,
+    desc:'Attaque secondaire: Renversement si la cible se déplace',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      if (hasCond(me,'blind')&&Math.random()<0.9) return;
+      const d=calcPhysDmg(me,tgt,20,30); dealDmg(me,tgt,d,'physique',g);
+      if(tgt.isMoving||me._lastAttackType==='lead') addCond(tgt,'knockdown',2,g);
+      me._lastAttackType='offhand';
+    }
+  },
+  a_deathblossom: {
+    name:'Floraison Mortelle (Duale)', icon:'🌸', cost:10, cast:0, recharge:8, range:130,
+    desc:'Attaque duale: frappe la cible + tous les ennemis adjacents',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      if (hasCond(me,'blind')&&Math.random()<0.9) return;
+      for(const e of getEnemies(me,g)){
+        if(dist(me,e)<160){ const d=calcPhysDmg(me,e,28,40); dealDmg(me,e,d,'physique',g); }
+      }
+      spawnFx(g,me.x,me.y,'#f8a',180,0.5); me._lastAttackType=null;
+    }
+  },
+  a_twistingfangs: {
+    name:'Crocs Tordus (Duale)', icon:'🦷', cost:10, cast:0, recharge:10, range:130,
+    desc:'Attaque duale: +dégâts, Hémorragie + Blessure Profonde',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      if (hasCond(me,'blind')&&Math.random()<0.9) return;
+      const d=calcPhysDmg(me,tgt,35,50); dealDmg(me,tgt,d,'physique',g);
+      addCond(tgt,'bleeding',15,g); addCond(tgt,'deepwound',15,g);
+      me._lastAttackType=null;
+    }
+  },
+  a_criticalstrike: {
+    name:'Frappe Critique', icon:'⚔️', cost:5, cast:0, recharge:6, range:130, elite:true,
+    desc:'[Élite] Coup critique garanti + regain d\'énergie',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      const d=calcPhysDmg(me,tgt,40,56); dealDmg(me,tgt,d,'physique',g);
+      me.energy=Math.min(me.maxEnergy,me.energy+8);
+      spawnFx(g,tgt.x,tgt.y,'#ff0',55,0.4);
+    }
+  },
+  a_dash: {
+    name:'Esquive', icon:'💨', cost:5, cast:0, recharge:15,
+    desc:'Vitesse +66% pendant 3s',
+    use(me, tgt, g) { addEnch(me,'dash',3,g); g.log(`${me.name} esquive!`,'log-sys'); }
+  },
+
+  // ── RITUALISTE ──────────────────────────────────────────────────
+  rt_mendbodyandsoul: {
+    name:'Soigner Corps et Âme', icon:'🌿', cost:5, cast:0.5, recharge:3, range:500, isHeal:true,
+    desc:'Soigne 80 PV + supprime 1 condition par esprit actif',
+    use(me, tgt, g) {
+      const t=(tgt&&!isEnemy(me,tgt))?tgt:me;
+      const heal=80+(me.healBonus||0); t.hp=Math.min(t.maxHp,t.hp+heal);
+      const conds=Object.keys(t.conditions); if(conds.length>0) delete t.conditions[conds[0]];
+      g.log(`${me.name} soigne ${t.name} de ${heal} PV`,'log-heal');
+      spawnFx(g,t.x,t.y,'#8f8',55,0.5);
+    }
+  },
+  rt_weaponofwarding: {
+    name:'Arme de Protection', icon:'🛡️', cost:5, cast:0, recharge:8, range:500, isHeal:true,
+    desc:'Enchantement: 50% blocage + régén 7 PV/s pendant 8s',
+    use(me, tgt, g) {
+      const t=(tgt&&!isEnemy(me,tgt))?tgt:me;
+      addEnch(t,'weapon_of_warding',8,g);
+      g.log(`${me.name} protège ${t.name} (Arme de Protection)`,'log-heal');
+      spawnFx(g,t.x,t.y,'#0ff',50,0.6);
+    }
+  },
+  rt_splinterweapon: {
+    name:'Arme Éclat', icon:'💎', cost:10, cast:0.5, recharge:10, range:500,
+    desc:'Enchantement: prochaines attaques causent 30 dégâts AoE',
+    use(me, tgt, g) {
+      const t=(tgt&&!isEnemy(me,tgt))?tgt:me;
+      addEnch(t,'splinter_weapon',10,g);
+      g.log(`${me.name} applique Arme Éclat sur ${t.name}`,'log-heal');
+      spawnFx(g,t.x,t.y,'#88f',50,0.6);
+    }
+  },
+  rt_ancestorsrage: {
+    name:'Rage des Ancêtres', icon:'🔥', cost:5, cast:0, recharge:8, range:500,
+    desc:'AoE instantané: 80 dégâts à tous les ennemis proches de la cible',
+    use(me, tgt, g) {
+      if (!tgt) return;
+      for(const e of getEnemies(me,g)){
+        if(dist(tgt,e)<150){ const d=calcSpellDmg(me,e,60,90); dealDmg(me,e,d,'esprit',g); }
+      }
+      spawnFx(g,tgt.x,tgt.y,'#f80',160,0.6);
+      g.log(`${me.name} déclenche Rage des Ancêtres!`,'log-dmg');
+    }
+  },
+  rt_bloodsong: {
+    name:'Chant de Sang', icon:'🎵', cost:10, cast:2, recharge:30, range:500,
+    desc:'Invoque un esprit qui attaque les ennemis proches toutes les 3s',
+    use(me, tgt, g) {
+      const sx=(me.x+tgt.x)/2||me.x, sy=(me.y+tgt.y)/2||me.y;
+      g.aoeZones.push({x:sx,y:sy,radius:200,color:'#f44',alpha:0.1,duration:30,timer:0,tickInterval:3,tickTimer:0,caster:me,
+        onTick(z,gg){ for(const e of getEnemies(me,gg)){ if(dist(z,e)<200){ const d=calcSpellDmg(me,e,30,40); dealDmg(me,e,d,'esprit',gg); } } }
+      });
+      g.log(`${me.name} invoque Chant de Sang!`,'log-dmg');
+    }
+  },
+  rt_shelter: {
+    name:'Abri', icon:'⛺', cost:15, cast:2, recharge:30, range:500,
+    desc:'Esprit: réduit dégâts subis par les alliés proches de 25%',
+    use(me, tgt, g) {
+      const sx=me.x-50, sy=me.y;
+      g.aoeZones.push({x:sx,y:sy,radius:250,color:'#0af',alpha:0.08,duration:30,timer:0,tickInterval:99,tickTimer:0,caster:me,
+        isShelter:true, onTick(){}
+      });
+      g.log(`${me.name} invoque Abri!`,'log-heal');
+      spawnFx(g,sx,sy,'#0af',100,0.8);
+    }
+  },
+
+  // ── DERVICHE ────────────────────────────────────────────────────
+  d_avatarmelandru: {
+    name:'Avatar de Mélandru', icon:'🌿', cost:15, cast:2, recharge:30, range:0, elite:true,
+    desc:'[Élite] 20s: immunité aux conditions + attaques touchent 3 ennemis',
+    use(me, tgt, g) {
+      addEnch(me,'avatar_melandru',20,g); me.conditions={};
+      g.log(`${me.name} devient Avatar de Mélandru!`,'log-sys');
+      spawnFx(g,me.x,me.y,'#8f4',120,1.0);
+    }
+  },
+  d_reaperssweep: {
+    name:'Balayage du Faucheur', icon:'⚔️', cost:5, cast:0, recharge:6, range:160,
+    desc:'Faux: Hémorragie + touche les ennemis adjacents',
+    use(me, tgt, g) {
+      let hit=0;
+      for(const e of getEnemies(me,g)){
+        if(dist(me,e)<170){ const d=calcPhysDmg(me,e,24,34); dealDmg(me,e,d,'physique',g); addCond(e,'bleeding',10,g); hit++; }
+      }
+      spawnFx(g,me.x,me.y,'#a44',180,0.4);
+      if(!hit) g.log('Pas d\'ennemi à portée','log-sys');
+    }
+  },
+  d_mysticsweep: {
+    name:'Balayage Mystique', icon:'🌀', cost:5, cast:0, recharge:4, range:160,
+    desc:'Faux AoE: renverse si 2 enchantements actifs',
+    use(me, tgt, g) {
+      const hasBonus=Object.keys(me.enchantments).length>=2;
+      for(const e of getEnemies(me,g)){
+        if(dist(me,e)<170){ const d=calcPhysDmg(me,e,20,30); dealDmg(me,e,d,'physique',g); if(hasBonus) addCond(e,'knockdown',1.5,g); }
+      }
+      spawnFx(g,me.x,me.y,'#88f',180,0.4);
+    }
+  },
+  d_piousassault: {
+    name:'Assaut Pieux', icon:'💥', cost:5, cast:0, recharge:8, range:160,
+    desc:'Frappe +50 dégâts, supprime un enchantement sur soi',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      if (hasCond(me,'blind')&&Math.random()<0.9) return;
+      const d=calcPhysDmg(me,tgt,40,58); dealDmg(me,tgt,d,'physique',g);
+      const enchs=Object.keys(me.enchantments);
+      if(enchs.length>0){ delete me.enchantments[enchs[0]]; }
+    }
+  },
+  d_chillingvictory: {
+    name:'Victoire Glaciale', icon:'❄️', cost:5, cast:0, recharge:5, range:160,
+    desc:'Frappe AoE: bonus dégâts si cible a moins de PV que vous',
+    use(me, tgt, g) {
+      for(const e of getEnemies(me,g)){
+        if(dist(me,e)<170){
+          let d=calcPhysDmg(me,e,20,28);
+          if(e.hp<me.hp) d=Math.floor(d*1.6);
+          dealDmg(me,e,d,'physique',g);
+        }
+      }
+      spawnFx(g,me.x,me.y,'#aef',180,0.5);
+    }
+  },
+  d_mysticregen: {
+    name:'Régénération Mystique', icon:'💚', cost:5, cast:0.5, recharge:8,
+    desc:'Enchantement: régénère 40 PV/s pendant 3s par enchantement actif',
+    use(me, tgt, g) {
+      const n=Object.keys(me.enchantments).length+1;
+      addEnch(me,'mystic_regen',3*n,g);
+      g.log(`${me.name} active Régénération Mystique (${n} enchantements)`,'log-heal');
+    }
+  },
+
+  // ── PARAGONE ────────────────────────────────────────────────────
+  p_tntf: {
+    name:'"Rien à Craindre!"', icon:'🛡️', cost:4, cast:0, recharge:8, elite:true,
+    desc:'[Élite] Cri: -50% dégâts pour tous les alliés proches pendant 5s',
+    use(me, tgt, g) {
+      for(const a of [me,...getAllies(me,g)]){ if(dist(me,a)<300) addEnch(a,'tntf',5,g); }
+      g.log(`${me.name}: "Rien à Craindre!" — équipe protégée!`,'log-heal');
+      spawnFx(g,me.x,me.y,'#ff8',200,0.7);
+    }
+  },
+  p_anthemflame: {
+    name:'Hymne de Flamme', icon:'🔥', cost:4, cast:0, recharge:6,
+    desc:'Cri: prochaine attaque alliée inflige Brûlure 3s',
+    use(me, tgt, g) {
+      for(const a of [me,...getAllies(me,g)]){ if(dist(me,a)<300) addEnch(a,'anthem_flame',8,g); }
+      g.log(`${me.name} chante Hymne de Flamme!`,'log-heal');
+      spawnFx(g,me.x,me.y,'#f60',180,0.6);
+    }
+  },
+  p_standyourground: {
+    name:'"Tenez Bon!"', icon:'⚔️', cost:4, cast:0, recharge:10,
+    desc:'Cri: +24 armure pour tous les alliés proches pendant 7s',
+    use(me, tgt, g) {
+      for(const a of [me,...getAllies(me,g)]){ if(dist(me,a)<300) addEnch(a,'stand_ground',7,g); }
+      g.log(`${me.name}: "Tenez Bon!" — armure renforcée!`,'log-heal');
+      spawnFx(g,me.x,me.y,'#fc0',180,0.6);
+    }
+  },
+  p_fallback: {
+    name:'"En Arrière!"', icon:'💨', cost:4, cast:0, recharge:15,
+    desc:'Cri: vitesse +33% pour toute l\'équipe pendant 7s',
+    use(me, tgt, g) {
+      for(const a of [me,...getAllies(me,g)]){ if(dist(me,a)<350) addEnch(a,'sprint',7,g); }
+      g.log(`${me.name}: "En Arrière!" — toute l\'équipe court!`,'log-heal');
+      spawnFx(g,me.x,me.y,'#8ff',200,0.6);
+    }
+  },
+  p_gfty: {
+    name:'"Visez les Yeux!"', icon:'👁️', cost:4, cast:0, recharge:8,
+    desc:'Cri: prochaine attaque de chaque allié peut aveugler',
+    use(me, tgt, g) {
+      for(const a of [me,...getAllies(me,g)]){ if(dist(me,a)<300) addEnch(a,'gfty',6,g); }
+      g.log(`${me.name}: "Visez les Yeux!"`, 'log-sys');
+    }
+  },
+  p_spearlightning: {
+    name:'Lance de Foudre', icon:'⚡', cost:5, cast:0, recharge:4, range:500,
+    desc:'Attaque à la lance: 60 dégâts foudre + armure réduite',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me,tgt)) return;
+      if (hasCond(me,'blind')&&Math.random()<0.9) return;
+      const d=calcSpellDmg(me,tgt,50,70); dealDmg(me,tgt,d,'foudre',g);
+      addCond(tgt,'weakness',5,g);
+      spawnProj(g,me,tgt.x,tgt.y,'#ff0',600,()=>{ spawnFx(g,tgt.x,tgt.y,'#ff0',50,0.4); });
+    }
+  },
 };
 
 // Ressig partagé pour tous
@@ -719,77 +1274,99 @@ const RESSIG = {
   use: SK.w_ressig.use
 };
 
-// ── BUILDS ────────────────────────────────────────────────────────
+// ── BASE STATS PAR CLASSE ─────────────────────────────────────────
+const BASE = {
+  warrior:      { classKey:'warrior',      color:'#e8873a', radius:18, maxHp:560, maxEnergy:25, energyRegen:2, armor:88, speed:100, minDmg:20, maxDmg:28, attackRange:130,  attackSpeed:1.33 },
+  monk:         { classKey:'monk',         color:'#88ffcc', radius:16, maxHp:480, maxEnergy:30, energyRegen:4, armor:70, speed:100, minDmg:10, maxDmg:15, attackRange:130,  attackSpeed:1.0,  healBonus:25 },
+  elementalist: { classKey:'elementalist', color:'#ff88aa', radius:16, maxHp:420, maxEnergy:45, energyRegen:4, armor:65, speed:100, minDmg:8,  maxDmg:12, attackRange:600,  attackSpeed:0.8,  spellBonus:15 },
+  mesmer:       { classKey:'mesmer',       color:'#cc88ff', radius:16, maxHp:450, maxEnergy:40, energyRegen:4, armor:65, speed:100, minDmg:8,  maxDmg:12, attackRange:500,  attackSpeed:0.8,  spellBonus:10 },
+  necro:        { classKey:'necro',        color:'#aa6688', radius:16, maxHp:440, maxEnergy:35, energyRegen:4, armor:65, speed:100, minDmg:8,  maxDmg:12, attackRange:500,  attackSpeed:0.8,  spellBonus:10 },
+  ranger:       { classKey:'ranger',       color:'#cccc44', radius:17, maxHp:460, maxEnergy:25, energyRegen:3, armor:75, speed:105, minDmg:16, maxDmg:22, attackRange:380,  attackSpeed:1.0  },
+  assassin:     { classKey:'assassin',     color:'#6688cc', radius:16, maxHp:440, maxEnergy:30, energyRegen:3, armor:70, speed:110, minDmg:18, maxDmg:26, attackRange:130,  attackSpeed:1.5  },
+  ritualist:    { classKey:'ritualist',    color:'#88ccaa', radius:16, maxHp:460, maxEnergy:35, energyRegen:4, armor:65, speed:100, minDmg:10, maxDmg:15, attackRange:130,  attackSpeed:0.9,  healBonus:15 },
+  dervish:      { classKey:'dervish',      color:'#ddaa44', radius:18, maxHp:520, maxEnergy:35, energyRegen:3, armor:80, speed:105, minDmg:22, maxDmg:34, attackRange:160,  attackSpeed:1.2  },
+  paragon:      { classKey:'paragon',      color:'#ffcc66', radius:17, maxHp:480, maxEnergy:30, energyRegen:4, armor:75, speed:100, minDmg:14, maxDmg:20, attackRange:400,  attackSpeed:1.0  },
+};
+
+// ── BUILDS JOUABLES (20 builds) ──────────────────────────────────
 const BUILDS = {
-  warrior: {
-    classKey:'warrior', name:'Guerrier / Élémentaliste', color:'#e8873a', radius:18,
-    maxHp:560, maxEnergy:25, energyRegen:2, armor:88, speed:100,
-    minDmg:20, maxDmg:28, attackRange:130, attackSpeed:1.33,
-    skills:['w_auto','w_eviscerate','w_gash','w_bullsstrike','w_frenzy','w_sprint','w_shock','w_ressig']
-  },
-  monk: {
-    classKey:'monk', name:'Moine / Guerrier', color:'#88ffcc', radius:16,
-    maxHp:480, maxEnergy:30, energyRegen:4, armor:70, speed:100,
-    minDmg:10, maxDmg:15, attackRange:130, attackSpeed:1.0,
-    healBonus:25,
-    skills:['w_auto','mo_woh','mo_heal','mo_orison','mo_removecond','mo_protspirit','mo_guardian','w_ressig']
-  },
-  elementalist: {
-    classKey:'elementalist', name:'Élémentaliste / Mage', color:'#ff88aa', radius:16,
-    maxHp:420, maxEnergy:45, energyRegen:4, armor:65, speed:100,
-    minDmg:8, maxDmg:12, attackRange:600, attackSpeed:0.8,
-    spellBonus:15,
-    skills:['e_flare','e_fireball','e_firestorm','e_lightning','e_iceprism','e_gale','e_blizzard','w_ressig']
-  },
-  mesmer: {
-    classKey:'mesmer', name:'Illusionniste / Nécromant', color:'#cc88ff', radius:16,
-    maxHp:450, maxEnergy:40, energyRegen:4, armor:65, speed:100,
-    minDmg:8, maxDmg:12, attackRange:500, attackSpeed:0.8,
-    spellBonus:10,
-    skills:['e_flare','me_interrupt','me_energysurge','me_imaginedhaste','me_empathy','me_backfire','me_nightmare','w_ressig']
-  },
+  // Guerrier
+  w_eviscerate: { ...BASE.warrior, name:'Guerrier (Éviscération)',
+    skills:['w_auto','w_eviscerate','w_gash','w_bullsstrike','w_frenzy','w_sprint','w_shock','w_ressig'] },
+  w_hammer:     { ...BASE.warrior, name:'Guerrier (Marteau)', minDmg:24, maxDmg:34, attackSpeed:1.0,
+    skills:['w_auto','w_devastatinghammer','w_crushingblow','w_bullsstrike','w_frenzy','w_rush','w_healsig','w_ressig'] },
+  // Moine
+  mo_woh:  { ...BASE.monk, name:'Moine (WoH — Guérison)',
+    skills:['w_auto','mo_woh','mo_heal','mo_infuse','mo_drawconditions','mo_removecond','mo_orison','w_ressig'] },
+  mo_prot: { ...BASE.monk, name:'Moine (Protection)', healBonus:10,
+    skills:['w_auto','mo_reversalfortune','mo_protspirit','mo_spiritbond','mo_guardian','mo_removecond','mo_woh','w_ressig'] },
+  // Élémentaliste
+  e_airspike: { ...BASE.elementalist, name:'Élémentaliste (Air Spike)',
+    skills:['e_flare','e_chainlightning','e_lightning','e_gale','e_blizzard','e_iceprism','me_interrupt','w_ressig'] },
+  e_fireaoe:  { ...BASE.elementalist, name:'Élémentaliste (Feu AoE)',
+    skills:['e_fireball','e_firestorm','e_rodgorts','e_meteorshower','e_flare','e_gale','me_interrupt','w_ressig'] },
+  // Illusionniste
+  me_eDenial:    { ...BASE.mesmer, name:'Illusionniste (Privation Énergie)',
+    skills:['e_flare','me_energysurge','me_interrupt','me_imaginedhaste','me_empathy','me_backfire','me_nightmare','w_ressig'] },
+  me_domination: { ...BASE.mesmer, name:'Illusionniste (Domination)',
+    skills:['e_flare','me_backfire','me_spiteful','me_empathy','me_nightmare','me_interrupt','me_energysurge','w_ressig'] },
+  // Nécromant
+  n_ss:    { ...BASE.necro, name:'Nécromant (SS Maléfices)',
+    skills:['e_flare','n_spitefulspirit','n_markofpain','n_weakenflesh','n_parasitic','me_imaginedhaste','me_backfire','w_ressig'] },
+  n_blood: { ...BASE.necro, name:'Nécromant (Sang)', healBonus:10,
+    skills:['e_flare','n_parasitic','n_orderpain','n_deathlyswarm','n_weakenflesh','n_spitefulspirit','mo_orison','w_ressig'] },
+  // Rôdeur
+  r_cripshot: { ...BASE.ranger, name:'Rôdeur (Crippling Shot)',
+    skills:['w_auto','r_cripplingshot','r_distractingshot','r_applypoison','r_burningarrow','w_sprint','w_healsig','w_ressig'] },
+  r_burning:  { ...BASE.ranger, name:'Rôdeur (Burning Arrow)',
+    skills:['w_auto','r_burningarrow','r_applypoison','r_barrage','r_distractingshot','r_cripplingshot','w_sprint','w_ressig'] },
+  // Assassin
+  a_sp:       { ...BASE.assassin, name:'Assassin (Shadow Prison)',
+    skills:['w_auto','a_shadowprison','a_goldenfang','a_hornsofox','a_twistingfangs','a_deathblossom','a_dash','w_ressig'] },
+  a_critical: { ...BASE.assassin, name:'Assassin (Critical Strikes)',
+    skills:['w_auto','a_criticalstrike','a_goldenfang','a_deathblossom','a_hornsofox','a_twistingfangs','a_dash','w_ressig'] },
+  // Ritualiste
+  rt_resto:    { ...BASE.ritualist, name:'Ritualiste (Restoration)', healBonus:25,
+    skills:['w_auto','rt_mendbodyandsoul','rt_weaponofwarding','rt_splinterweapon','rt_ancestorsrage','rt_bloodsong','rt_shelter','w_ressig'] },
+  rt_splinter: { ...BASE.ritualist, name:'Ritualiste (Splinter Weapon)',
+    skills:['w_auto','rt_splinterweapon','rt_ancestorsrage','rt_mendbodyandsoul','rt_bloodsong','rt_shelter','rt_weaponofwarding','w_ressig'] },
+  // Derviche
+  d_melandru: { ...BASE.dervish, name:'Derviche (Avatar Mélandru)',
+    skills:['w_auto','d_avatarmelandru','d_reaperssweep','d_mysticsweep','d_chillingvictory','d_mysticregen','d_piousassault','w_ressig'] },
+  d_scythe:   { ...BASE.dervish, name:'Derviche (Pression Faux)',
+    skills:['w_auto','d_reaperssweep','d_mysticsweep','d_piousassault','d_chillingvictory','d_mysticregen','w_sprint','w_ressig'] },
+  // Paragone
+  p_tntf:       { ...BASE.paragon, name:'Paragone (TNTF Support)',
+    skills:['w_auto','p_tntf','p_anthemflame','p_standyourground','p_fallback','p_gfty','p_spearlightning','w_ressig'] },
+  p_motivation: { ...BASE.paragon, name:'Paragone (Motivation)',
+    skills:['w_auto','p_fallback','p_tntf','p_standyourground','p_anthemflame','p_gfty','p_spearlightning','w_ressig'] },
 };
 
-// Builds IA alliés
-const ALLY_BUILDS = {
-  ally_monk: {
-    ...BUILDS.monk,
-    classKey:'monk', name:'Kira (Moine)', color:'#88ffcc',
-    skills:['w_auto','mo_woh','mo_heal','mo_orison','mo_removecond','mo_protspirit','mo_guardian','w_ressig']
-  },
-  ally_ele: {
-    ...BUILDS.elementalist,
-    classKey:'elementalist', name:'Zara (Élémentaliste)', color:'#ff88aa',
-    skills:['e_flare','e_fireball','e_blizzard','e_lightning','e_iceprism','e_gale','e_firestorm','w_ressig']
-  },
-};
+// ── BUILDS IA ALLIÉS (pools par rôle) ────────────────────────────
+const ALLY_POOL = [
+  { ...BASE.monk,      name:'Kira (Moine WoH)',   skills:['w_auto','mo_woh','mo_heal','mo_infuse','mo_drawconditions','mo_removecond','mo_protspirit','w_ressig'] },
+  { ...BASE.monk,      name:'Lyra (Moine Prot)',   skills:['w_auto','mo_reversalfortune','mo_protspirit','mo_spiritbond','mo_guardian','mo_removecond','mo_woh','w_ressig'] },
+  { ...BASE.ritualist, name:'Sora (Ritualiste)',   healBonus:20, skills:['w_auto','rt_mendbodyandsoul','rt_weaponofwarding','rt_splinterweapon','rt_ancestorsrage','rt_bloodsong','rt_shelter','w_ressig'] },
+  { ...BASE.elementalist, name:'Zara (Élémentaliste)', skills:['e_flare','e_fireball','e_chainlightning','e_blizzard','e_iceprism','e_gale','e_rodgorts','w_ressig'] },
+  { ...BASE.mesmer,    name:'Vael (Illusionniste)', skills:['e_flare','me_backfire','me_spiteful','me_empathy','me_interrupt','me_energysurge','me_nightmare','w_ressig'] },
+  { ...BASE.paragon,   name:'Aras (Paragone)',      skills:['w_auto','p_tntf','p_anthemflame','p_standyourground','p_fallback','p_gfty','p_spearlightning','w_ressig'] },
+];
 
-// Builds IA ennemis
-const ENEMY_BUILDS = {
-  e_warrior: {
-    ...BUILDS.warrior,
-    classKey:'warrior', name:'Guerrier Ennemi', color:'#e8873a',
-    skills:['w_auto','w_eviscerate','w_gash','w_bullsstrike','w_frenzy','w_sprint','w_shock','w_healsig']
-  },
-  e_monk: {
-    ...BUILDS.monk,
-    classKey:'monk', name:'Moine Ennemi', color:'#88ffcc',
-    skills:['w_auto','mo_woh','mo_heal','mo_orison','mo_removecond','mo_protspirit','mo_guardian','w_ressig']
-  },
-  e_ranger: {
-    classKey:'ranger', name:'Rôdeur Ennemi', color:'#cccc44', radius:17,
-    maxHp:460, maxEnergy:25, energyRegen:3, armor:75, speed:100,
-    minDmg:16, maxDmg:22, attackRange:350, attackSpeed:1.0,
-    skills:['w_auto','w_eviscerate','w_bullsstrike','w_sprint','w_shock','mo_removecond','w_healsig','w_ressig']
-  },
-  e_necro: {
-    classKey:'necro', name:'Nécromant Ennemi', color:'#aa6688', radius:16,
-    maxHp:420, maxEnergy:35, energyRegen:4, armor:65, speed:100,
-    minDmg:8, maxDmg:12, attackRange:500, attackSpeed:0.8,
-    spellBonus:10,
-    skills:['e_flare','me_empathy','me_nightmare','me_backfire','me_spiteful','me_imaginedhaste','me_energysurge','w_ressig']
-  },
-};
+// ── BUILDS IA ENNEMIS (pools variés) ─────────────────────────────
+const ENEMY_POOL = [
+  { ...BASE.warrior,   name:'Guerrier Enn.',    skills:['w_auto','w_eviscerate','w_gash','w_bullsstrike','w_frenzy','w_rush','w_shock','w_healsig'] },
+  { ...BASE.warrior,   name:'Marteleur Enn.',   minDmg:24, maxDmg:34, attackSpeed:1.0, skills:['w_auto','w_devastatinghammer','w_crushingblow','w_bullsstrike','w_frenzy','w_rush','w_shock','w_healsig'] },
+  { ...BASE.monk,      name:'Moine Enn.',       skills:['w_auto','mo_woh','mo_heal','mo_infuse','mo_drawconditions','mo_removecond','mo_protspirit','w_ressig'] },
+  { ...BASE.monk,      name:'Moine Prot Enn.',  skills:['w_auto','mo_reversalfortune','mo_protspirit','mo_spiritbond','mo_guardian','mo_removecond','mo_woh','w_ressig'] },
+  { ...BASE.elementalist, name:'Élémentaliste Enn.', skills:['e_flare','e_fireball','e_chainlightning','e_rodgorts','e_meteorshower','e_gale','e_blizzard','w_ressig'] },
+  { ...BASE.mesmer,    name:'Illusionniste Enn.', skills:['e_flare','me_backfire','me_spiteful','me_empathy','me_interrupt','me_energysurge','me_nightmare','w_ressig'] },
+  { ...BASE.necro,     name:'Nécromant Enn.',   skills:['e_flare','n_spitefulspirit','n_markofpain','n_weakenflesh','n_parasitic','me_imaginedhaste','me_backfire','w_ressig'] },
+  { ...BASE.ranger,    name:'Rôdeur Enn.',      skills:['w_auto','r_cripplingshot','r_burningarrow','r_applypoison','r_distractingshot','r_barrage','w_sprint','w_ressig'] },
+  { ...BASE.assassin,  name:'Assassin Enn.',    skills:['w_auto','a_shadowprison','a_goldenfang','a_hornsofox','a_twistingfangs','a_deathblossom','a_dash','w_ressig'] },
+  { ...BASE.dervish,   name:'Derviche Enn.',    skills:['w_auto','d_reaperssweep','d_mysticsweep','d_chillingvictory','d_piousassault','d_mysticregen','w_sprint','w_ressig'] },
+  { ...BASE.paragon,   name:'Paragone Enn.',    skills:['w_auto','p_tntf','p_anthemflame','p_standyourground','p_fallback','p_gfty','p_spearlightning','w_ressig'] },
+  { ...BASE.ritualist, name:'Ritualiste Enn.',  skills:['w_auto','rt_splinterweapon','rt_ancestorsrage','rt_mendbodyandsoul','rt_bloodsong','rt_shelter','rt_weaponofwarding','w_ressig'] },
+];
 
 // ── CREATION DE PERSONNAGE ──────────────────────────────────────
 function makeChar(build, team, x, y, isPlayer) {
@@ -1276,8 +1853,40 @@ function drawClassSymbol(ctx, x, y, r, classKey) {
       ctx.beginPath(); ctx.moveTo(x + s*0.12, y + s*0.38); ctx.lineTo(x + s*0.12, y + s*0.6); ctx.stroke();
       break;
     }
+    case 'assassin': {
+      // X avec un trait vertical = lame d'assassin
+      ctx.lineWidth = 1.8;
+      ctx.beginPath(); ctx.moveTo(x-s,y-s); ctx.lineTo(x+s,y+s); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x+s,y-s); ctx.lineTo(x-s,y+s); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x,y-s*1.1); ctx.lineTo(x,y-s*0.3); ctx.stroke();
+      break;
+    }
+    case 'ritualist': {
+      // Trois cercles imbriqués (esprits)
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(x,y,s*0.55,0,Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x-s*0.5,y+s*0.3,s*0.25,0,Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x+s*0.5,y+s*0.3,s*0.25,0,Math.PI*2); ctx.stroke();
+      break;
+    }
+    case 'dervish': {
+      // Faucille : arc + trait
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x+s*0.1, y, s*0.7, Math.PI*0.85, Math.PI*1.85); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x-s*0.6,y+s*0.05); ctx.lineTo(x+s*0.8,y-s*0.5); ctx.stroke();
+      break;
+    }
+    case 'paragon': {
+      // Pointe de lance vers le haut
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x, y-s); ctx.lineTo(x+s*0.5, y+s*0.3); ctx.lineTo(x, y+s*0.0);
+      ctx.lineTo(x-s*0.5, y+s*0.3); ctx.closePath(); ctx.stroke();
+      // Trait de hampe
+      ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x,y+s); ctx.stroke();
+      break;
+    }
     default: {
-      // Fallback: simple dot
       ctx.beginPath(); ctx.arc(x, y, s*0.3, 0, Math.PI*2); ctx.fill();
     }
   }
@@ -1561,45 +2170,77 @@ function buildSkillBar(p) {
 }
 
 // ── GAME START / END ──────────────────────────────────────────────
+function shuffle(arr) { for (let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+
 function startGame() {
   const cls = document.getElementById('class-picker').value;
   const build = BUILDS[cls];
   if (!build) return;
 
-  document.getElementById('overlay').style.display = 'none';
+  // Reset state
   document.getElementById('log-entries').innerHTML = '';
-  game.chars = [];
-  game.effects = []; game.projectiles = []; game.aoeZones = [];
-  game.over = false; game.running = true;
-  game.logLines = [];
+  game.chars = []; game.effects = []; game.projectiles = []; game.aoeZones = [];
+  game.over = false; game.running = false; game.logLines = [];
 
-  // Player
+  // --- Spawn characters ---
   const player = makeChar(build, TEAM_ALLY, 160, 250, true);
-  player.name = 'Vous';
-  game.player = player;
-  game.chars.push(player);
+  player.name = 'Vous'; game.player = player; game.chars.push(player);
 
-  // Allies
-  const monk = makeChar(ALLY_BUILDS.ally_monk, TEAM_ALLY, 120, 180);
-  const ele  = makeChar(ALLY_BUILDS.ally_ele,  TEAM_ALLY, 120, 320);
-  game.chars.push(monk, ele);
+  // 3 alliés aléatoires (dont au moins 1 soin)
+  const healerPool = shuffle(ALLY_POOL.filter(b => b.healBonus)).slice(0,1);
+  const otherPool  = shuffle(ALLY_POOL.filter(b => !b.healBonus)).slice(0,2);
+  const allyBuilds = [...healerPool, ...otherPool];
+  const allyPos = [[120,160],[110,280],[130,400]];
+  const allies = allyBuilds.map((b,i) => makeChar(b, TEAM_ALLY, allyPos[i][0], allyPos[i][1]));
+  allies.forEach(a => game.chars.push(a));
 
-  // Enemies
-  const ew = makeChar(ENEMY_BUILDS.e_warrior, TEAM_ENEMY, 540, 200);
-  const em = makeChar(ENEMY_BUILDS.e_monk,    TEAM_ENEMY, 590, 280);
-  const er = makeChar(ENEMY_BUILDS.e_ranger,  TEAM_ENEMY, 540, 360);
-  const en = makeChar(ENEMY_BUILDS.e_necro,   TEAM_ENEMY, 600, 430);
-  game.chars.push(ew, em, er, en);
+  // 4 ennemis aléatoires (dont 1 healer garanti)
+  const eHealers = shuffle(ENEMY_POOL.filter(b => b.healBonus||b.classKey==='monk'||b.classKey==='ritualist'));
+  const eDmg     = shuffle(ENEMY_POOL.filter(b => !b.healBonus&&b.classKey!=='monk'&&b.classKey!=='ritualist'));
+  const enemyBuilds = [eHealers[0], eDmg[0], eDmg[1]||eDmg[0], eDmg[2]||eDmg[1]];
+  const enemyPos = [[540,160],[590,270],[545,370],[600,460]];
+  const enemies = enemyBuilds.map((b,i) => makeChar(b, TEAM_ENEMY, enemyPos[i][0], enemyPos[i][1]));
+  enemies.forEach(e => game.chars.push(e));
 
-  // Default targets
-  player.target = ew;
-  monk.target   = player;
-  ele.target    = ew;
-  ew.target = player; er.target = player; en.target = player; em.target = monk;
+  // Default AI targets
+  const firstEnemy = enemies.find(e=>e.classKey!=='monk'&&e.classKey!=='ritualist') || enemies[0];
+  player.target = firstEnemy;
+  allies.forEach(a => { a.target = a.healBonus ? player : firstEnemy; });
+  enemies.forEach(e => { e.target = e.healBonus ? allies[0]||player : player; });
 
   buildSkillBar(player);
-  game.log('=== Combat commencé ! ===', 'log-sys');
-  game.log('ZQSD pour se déplacer, 1-8 pour les compétences', 'log-sys');
+
+  // --- Countdown 3-2-1 ---
+  const ov = document.getElementById('overlay');
+  const msg = document.getElementById('overlay-msg');
+  const sub = document.getElementById('overlay-sub');
+  ov.style.display = 'flex';
+  document.getElementById('restart-btn').style.display = 'none';
+  msg.style.color = '#fc0'; msg.style.fontSize = '64px';
+
+  const enemyNames = enemies.map(e=>e.name).join(', ');
+  sub.textContent = `Adversaires : ${enemyNames}`;
+
+  let count = 3;
+  msg.textContent = count;
+  const cd = setInterval(() => {
+    count--;
+    if (count > 0) {
+      msg.textContent = count;
+    } else {
+      clearInterval(cd);
+      msg.textContent = 'COMBAT!';
+      msg.style.color = '#f44';
+      setTimeout(() => {
+        ov.style.display = 'none';
+        document.getElementById('restart-btn').style.display = '';
+        msg.style.fontSize = '';
+        game.running = true;
+        game.log('=== Combat commencé ! ===','log-sys');
+        game.log('ZQSD: déplacer | 1-8: compétences | Espace: auto-attaque','log-sys');
+      }, 700);
+    }
+  }, 1000);
 }
 
 function endGame(won) {
