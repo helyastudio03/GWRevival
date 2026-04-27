@@ -379,6 +379,7 @@ footer {
   <a href="#combat">Combat</a>
   <a href="#statuses">États</a>
   <a href="#classes">Classes</a>
+  <a href="#visuals">Visuels</a>
   <a href="#skills">Skills</a>
   <a href="#builds">Builds</a>
   <a href="#maps">Maps</a>
@@ -463,9 +464,9 @@ footer {
     <p class="muted" style="font-size:0.85em">Exemple : 60 armure = ×1.0 (neutre) · 80 armure ≈ ×0.66 · 100 armure ≈ ×0.44 · 40 armure ≈ ×1.49</p>
 
     <div class="subsection-title">Dégâts de sort</div>
-    <p>Les sorts ignorent en grande partie l'armure : l'armure effective est ramenée vers 60, réduisant fortement l'impact de la protection physique.</p>
-    <div class="formula">armor_effective = 60 + (target.armor - 60) × 0.2<br>dmg = raw × 0.5 ^ ((armor_effective - 60) / 40)</div>
-    <p class="muted" style="font-size:0.85em">Exemple : un guerrier avec 88 armure subit seulement ~5% de réduction sur les sorts (effective ≈ 65.6) contre ~34% sur les coups physiques.</p>
+    <p>Les sorts ignorent en grande partie l'armure : l'armure effective est ramenée vers 60, réduisant fortement l'impact de la protection physique. Les classes lanceurs de sorts ont un <strong>spellBonus</strong> qui augmente les dégâts bruts avant le calcul d'armure.</p>
+    <div class="formula">raw = rnd(lo, hi) + attacker.spellBonus  <span style="color:#888">// Élé +15, Mesmer +10, Nécro +10</span><br>armor_effective = 60 + (target.armor - 60) × 0.2<br>dmg = raw × 0.5 ^ ((armor_effective - 60) / 40)</div>
+    <p class="muted" style="font-size:0.85em">Exemple : un guerrier (88 armure) a une armure effective de 65.6 contre les sorts → réduction de seulement ~5%. Un moine (70 armure) → effective 62 → réduction ~3.5%. Les sorts touchent presque à plein.</p>
 
     <div class="subsection-title">Modificateurs de dégâts</div>
     <div class="tbl-wrap">
@@ -803,18 +804,107 @@ footer {
     <div class="subsection-title">Tableau comparatif</div>
     <div class="tbl-wrap">
       <table>
-        <tr><th>Classe</th><th>PV</th><th>Énergie</th><th>Armure</th><th>Vitesse</th><th>Portée</th><th>Rôle principal</th></tr>
-        <tr><td><span class="class-dot" style="background:#e8873a"></span><span class="class-warrior">Guerrier</span></td><td class="green">560</td><td>25</td><td class="green">88</td><td>100</td><td>130</td><td>Pression physique, contrôle</td></tr>
-        <tr><td><span class="class-dot" style="background:#88ffcc"></span><span class="class-monk">Moine</span></td><td>480</td><td>30</td><td>70</td><td>100</td><td>130</td><td>Guérison, protection</td></tr>
-        <tr><td><span class="class-dot" style="background:#ff88aa"></span><span class="class-elementalist">Élémentaliste</span></td><td class="red">420</td><td class="green">45</td><td class="red">65</td><td>100</td><td class="green">600</td><td>Dégâts sorts, AoE</td></tr>
-        <tr><td><span class="class-dot" style="background:#cc88ff"></span><span class="class-mesmer">Illusionniste</span></td><td>450</td><td>40</td><td class="red">65</td><td>100</td><td>500</td><td>Perturbation, énergie-denial</td></tr>
-        <tr><td><span class="class-dot" style="background:#aa6688"></span><span class="class-necro">Nécromant</span></td><td>440</td><td>35</td><td class="red">65</td><td>100</td><td>500</td><td>Maléfices, pression durable</td></tr>
-        <tr><td><span class="class-dot" style="background:#cccc44"></span><span class="class-ranger">Rôdeur</span></td><td>460</td><td>25</td><td>75</td><td>105</td><td>380</td><td>Conditions, interruption</td></tr>
-        <tr><td><span class="class-dot" style="background:#6688cc"></span><span class="class-assassin">Assassin</span></td><td>440</td><td>30</td><td>70</td><td class="green">110</td><td>130</td><td>Burst, mobilité</td></tr>
-        <tr><td><span class="class-dot" style="background:#88ccaa"></span><span class="class-ritualist">Ritualiste</span></td><td>460</td><td>35</td><td class="red">65</td><td>100</td><td>130</td><td>Esprits, soutien hybride</td></tr>
-        <tr><td><span class="class-dot" style="background:#ddaa44"></span><span class="class-dervish">Derviche</span></td><td>520</td><td>35</td><td>80</td><td>105</td><td>160</td><td>AoE mêlée, enchantements</td></tr>
-        <tr><td><span class="class-dot" style="background:#ffcc66"></span><span class="class-paragon">Paragone</span></td><td>480</td><td>30</td><td>75</td><td>100</td><td>400</td><td>Cris d'équipe, soutien</td></tr>
+        <tr><th>Classe</th><th>PV</th><th>Énergie</th><th>Regen E</th><th>Armure</th><th>Vitesse</th><th>Portée</th><th>Atk/s</th><th>Bonus sort</th><th>Rôle</th></tr>
+        <tr><td><span class="class-dot" style="background:#e8873a"></span><span class="class-warrior">Guerrier</span></td><td class="green">560</td><td>25</td><td class="red">2</td><td class="green">88</td><td>100</td><td>130</td><td>1.33</td><td>—</td><td>Pression physique, contrôle</td></tr>
+        <tr><td><span class="class-dot" style="background:#88ffcc"></span><span class="class-monk">Moine</span></td><td>480</td><td>30</td><td>4</td><td>70</td><td>100</td><td>130</td><td>1.0</td><td>+25 soin</td><td>Guérison, protection</td></tr>
+        <tr><td><span class="class-dot" style="background:#ff88aa"></span><span class="class-elementalist">Élémentaliste</span></td><td class="red">420</td><td class="green">45</td><td>4</td><td class="red">65</td><td>100</td><td class="green">600</td><td>0.8</td><td class="green">+15 sort</td><td>Dégâts sorts, AoE</td></tr>
+        <tr><td><span class="class-dot" style="background:#cc88ff"></span><span class="class-mesmer">Illusionniste</span></td><td>450</td><td>40</td><td>4</td><td class="red">65</td><td>100</td><td>500</td><td>0.8</td><td>+10 sort</td><td>Perturbation, énergie-denial</td></tr>
+        <tr><td><span class="class-dot" style="background:#aa6688"></span><span class="class-necro">Nécromant</span></td><td>440</td><td>35</td><td>4</td><td class="red">65</td><td>100</td><td>500</td><td>0.8</td><td>+10 sort</td><td>Maléfices, pression durable</td></tr>
+        <tr><td><span class="class-dot" style="background:#cccc44"></span><span class="class-ranger">Rôdeur</span></td><td>460</td><td>25</td><td>3</td><td>75</td><td>105</td><td>380</td><td>1.0</td><td>—</td><td>Conditions, interruption</td></tr>
+        <tr><td><span class="class-dot" style="background:#6688cc"></span><span class="class-assassin">Assassin</span></td><td>440</td><td>30</td><td>3</td><td>70</td><td class="green">110</td><td>130</td><td class="green">1.5</td><td>—</td><td>Burst, mobilité</td></tr>
+        <tr><td><span class="class-dot" style="background:#88ccaa"></span><span class="class-ritualist">Ritualiste</span></td><td>460</td><td>35</td><td>4</td><td class="red">65</td><td>100</td><td>130</td><td>0.9</td><td>+15 soin</td><td>Esprits, soutien hybride</td></tr>
+        <tr><td><span class="class-dot" style="background:#ddaa44"></span><span class="class-dervish">Derviche</span></td><td>520</td><td>35</td><td>3</td><td>80</td><td>105</td><td>160</td><td>1.2</td><td>—</td><td>AoE mêlée, enchantements</td></tr>
+        <tr><td><span class="class-dot" style="background:#ffcc66"></span><span class="class-paragon">Paragone</span></td><td>480</td><td>30</td><td>4</td><td>75</td><td>100</td><td>400</td><td>1.0</td><td>—</td><td>Cris d'équipe, soutien</td></tr>
       </table>
+    </div>
+    <p class="muted" style="font-size:0.82em; margin-top:6px">* Vitesse d'attaque = attaques auto par seconde. Regen E = énergie régénérée par seconde passivement. Bonus sort = bonus flat ajouté aux dégâts bruts des sorts (spellBonus) ou aux soins (healBonus).</p>
+  </section>
+
+  <!-- SECTION 5b : VISUELS -->
+  <section class="section" id="visuals">
+    <div class="section-title">Visuels &amp; Interface</div>
+
+    <div class="subsection-title">Code couleur des équipes</div>
+    <div class="card-2col">
+      <div class="card" style="border-left:3px solid #4af">
+        <strong style="color:#4af">Équipe Alliée — Bleu</strong>
+        <ul style="margin-top:8px; font-size:0.88em">
+          <li>Cercle du personnage : couleur de classe avec bordure <strong style="color:#4af">bleue</strong></li>
+          <li>Barres PV en vert/rouge selon niveau</li>
+          <li>Chiffres de dégâts reçus en <span style="color:#f88">rouge clair</span></li>
+          <li>Chiffres de soins en <span style="color:#5efa8a">vert vif</span></li>
+        </ul>
+      </div>
+      <div class="card" style="border-left:3px solid #f44">
+        <strong style="color:#f44">Équipe Ennemie — Rouge</strong>
+        <ul style="margin-top:8px; font-size:0.88em">
+          <li>Cercle du personnage : couleur de classe avec bordure <strong style="color:#f44">rouge</strong></li>
+          <li>Barres PV en rouge</li>
+          <li>Chiffres de dégâts reçus en <span style="color:#faa">rose</span></li>
+          <li>Anneau de sélection en rouge pointillé quand ciblé</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="subsection-title">Symboles de classe</div>
+    <div class="tbl-wrap"><table>
+      <tr><th>Classe</th><th>Symbole dessiné sur le personnage</th><th>Couleur</th></tr>
+      <tr><td><span class="class-warrior">Guerrier</span></td><td>Épées croisées (X avec garde)</td><td><span class="swatch" style="background:#e8873a"></span>#e8873a</td></tr>
+      <tr><td><span class="class-monk">Moine</span></td><td>Croix épaisse (+)</td><td><span class="swatch" style="background:#88ffcc"></span>#88ffcc</td></tr>
+      <tr><td><span class="class-elementalist">Élémentaliste</span></td><td>Diamant (losange)</td><td><span class="swatch" style="background:#ff88aa"></span>#ff88aa</td></tr>
+      <tr><td><span class="class-mesmer">Illusionniste</span></td><td>Spirale (arc tournant)</td><td><span class="swatch" style="background:#cc88ff"></span>#cc88ff</td></tr>
+      <tr><td><span class="class-ranger">Rôdeur</span></td><td>Arc et flèche</td><td><span class="swatch" style="background:#cccc44"></span>#cccc44</td></tr>
+      <tr><td><span class="class-necro">Nécromant</span></td><td>Crâne (cercle + triangles)</td><td><span class="swatch" style="background:#aa6688"></span>#aa6688</td></tr>
+      <tr><td><span class="class-assassin">Assassin</span></td><td>Croix de lames (X + lame centrale)</td><td><span class="swatch" style="background:#6688cc"></span>#6688cc</td></tr>
+      <tr><td><span class="class-ritualist">Ritualiste</span></td><td>3 cercles concentriques</td><td><span class="swatch" style="background:#88ccaa"></span>#88ccaa</td></tr>
+      <tr><td><span class="class-dervish">Derviche</span></td><td>Faux (arc + hampe)</td><td><span class="swatch" style="background:#ddaa44"></span>#ddaa44</td></tr>
+      <tr><td><span class="class-paragon">Paragone</span></td><td>Lance (diagonale avec pointe)</td><td><span class="swatch" style="background:#ffcc66"></span>#ffcc66</td></tr>
+    </table></div>
+
+    <div class="subsection-title">Chiffres flottants</div>
+    <div class="tbl-wrap"><table>
+      <tr><th>Type</th><th>Couleur</th><th>Taille</th><th>Condition</th></tr>
+      <tr><td>Dégâts normaux (allié touché)</td><td><span style="color:#f88">■</span> Rouge clair</td><td>13px</td><td>Dégâts ≤ 45</td></tr>
+      <tr><td>Dégâts normaux (ennemi touché)</td><td><span style="color:#faa">■</span> Rose</td><td>13px</td><td>Dégâts ≤ 45</td></tr>
+      <tr><td>Coup critique / gros dégâts</td><td><span style="color:#ff4">■</span> Jaune vif</td><td>16px</td><td>Dégâts &gt; 45</td></tr>
+      <tr><td>Soin</td><td><span style="color:#5efa8a">■</span> Vert vif</td><td>12px</td><td>Récupération de PV détectée</td></tr>
+      <tr><td>Mort</td><td><span style="color:#888">■</span> Gris</td><td>18px</td><td>À la mort du personnage</td></tr>
+      <tr><td>Coup bloqué</td><td><span style="color:#ff8">■</span> Or</td><td>11px</td><td>Intervention Divine / Guardian</td></tr>
+      <tr><td>Respawn</td><td><span style="color:#0ff">■</span> Cyan</td><td>14px</td><td>Réapparition au shrine</td></tr>
+      <tr><td>Timer mort</td><td><span style="color:#6df">■</span> Bleu (alliés) / <span style="color:#f86">■</span> Orange (ennemis)</td><td>10px</td><td>Compte à rebours au-dessus du corps</td></tr>
+    </table></div>
+
+    <div class="subsection-title">Effets visuels en jeu</div>
+    <ul>
+      <li><strong>Cercle de sélection</strong> — anneau pointillé vert (allié ciblé) ou rouge (ennemi ciblé) autour du personnage</li>
+      <li><strong>Projectiles</strong> — petits cercles colorés se déplaçant de la source vers la cible (feu = orange, foudre = jaune, flèche = kaki)</li>
+      <li><strong>Effets d'impact</strong> — cercles qui s'expandent et s'estompent à l'impact ou au cast</li>
+      <li><strong>Zones AoE</strong> — cercles semi-transparents colorés (feu = orange, glace = bleu clair, esprits = rouge/cyan)</li>
+      <li><strong>Points de condition</strong> — petits cercles colorés sous les personnages indiquant les conditions actives</li>
+      <li><strong>Barre de cast</strong> — barre dorée sous le joueur pendant l'incantation</li>
+      <li><strong>Barre PV</strong> — rouge au-dessus de chaque personnage vivant</li>
+      <li><strong>Corps</strong> — cercle gris semi-transparent avec timer de respawn au-dessus</li>
+    </ul>
+
+    <div class="subsection-title">Interface (hors canvas)</div>
+    <div class="card-2col">
+      <div class="card">
+        <strong>Panel droit</strong>
+        <ul style="margin-top:8px; font-size:0.88em">
+          <li><strong>Équipe</strong> : barre PV + barre énergie + points de condition pour chaque allié IA</li>
+          <li><strong>Cible</strong> : nom, barre PV, conditions de la cible sélectionnée</li>
+          <li><strong>Log de combat</strong> : messages colorés en temps réel (rouge=dégâts, vert=soins, violet=maléfices, orange=conditions)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <strong>Bas de l'écran</strong>
+        <ul style="margin-top:8px; font-size:0.88em">
+          <li><strong>Barres joueur</strong> : PV (vert), Énergie (bleu), Cast (doré)</li>
+          <li><strong>Conditions joueur</strong> : badges colorés avec nom</li>
+          <li><strong>Barre de skills</strong> : 8 slots avec icône emoji, numéro, overlay gris = cooldown, overlay rouge = énergie insuffisante</li>
+          <li><strong>Tooltip</strong> : s'affiche au survol de chaque skill (nom, tags, description, stats)</li>
+        </ul>
+      </div>
     </div>
   </section>
 
@@ -1465,7 +1555,20 @@ footer {
 </div>
 
 <footer>
-  Guild Wars PvP Prototype — Documentation générée automatiquement
+  <div style="margin-bottom:6px">
+    <span style="color:#c8a000; font-weight:bold; letter-spacing:2px">GUILD WARS PVP PROTOTYPE</span>
+  </div>
+  <div style="display:flex; justify-content:center; gap:24px; flex-wrap:wrap; margin-bottom:8px; font-size:0.82em">
+    <span>10 classes</span>
+    <span>20 builds jouables</span>
+    <span>~55 compétences</span>
+    <span>3 maps</span>
+    <span>HTML5 Canvas · JavaScript</span>
+  </div>
+  <div style="color:#444; font-size:0.75em">
+    Inspiré de Guild Wars 1 — ArenaNet · NCsoft<br>
+    Prototype non officiel à but éducatif
+  </div>
 </footer>
 
 </body>
