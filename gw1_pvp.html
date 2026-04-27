@@ -555,7 +555,8 @@ function respawnChar(c, g) {
   c.hp = c.maxHp; c.energy = Math.floor(c.maxEnergy * 0.5);
   c.conditions = {}; c.enchantments = {}; c.hexes = {};
   c.x = c.spawnX + rnd(-30, 30); c.y = c.spawnY + rnd(-30, 30);
-  c.rezTimer = 0; c.autoAttack = false;
+  c.rezTimer = 0; c.casting = null; c.castTimer = 0;
+  c.target = null; c.autoAttack = false; c.attackTimer = 0;
   g.log(`✦ ${c.name} réapparaît au shrine !`, 'log-heal');
   spawnFx(g, c.x, c.y, '#0ff', 80, 1.0);
   addFloat(g, c.x, c.y, 'RESPAWN', '#0ff', 14);
@@ -1851,9 +1852,19 @@ function aiUpdate(c, dt, g) {
       if (wounded.hp / wounded.maxHp < 0.4) tryAiSkill(c, 'mo_protspirit', g);
       return;
     }
-    // idle: stay near strongest ally
+    // Idle: team healthy — cast protective buffs proactively, attack nearby enemies
+    const team = [c, ...allies];
+    const lowestRatio = team.reduce((a, b) => (a.hp / a.maxHp < b.hp / b.maxHp ? a : b));
+    c.target = lowestRatio;
+    // Try proactive protection on the most vulnerable ally
+    tryAiSkill(c, 'mo_guardian', g) || tryAiSkill(c, 'mo_protspirit', g) || tryAiSkill(c, 'mo_spiritbond', g);
+    // Light attack pressure on close enemies
+    const closeEnemy = enemies.find(e => dist(c, e) < c.attackRange + 40);
+    if (closeEnemy) { c.target = closeEnemy; c.autoAttack = true; }
+    else { c.autoAttack = false; }
+    // Stay within 200px of closest ally
     const anchor = allies[0] || c;
-    if (dist(c, anchor) > 150) c.moveTarget = { x: anchor.x, y: anchor.y };
+    if (dist(c, anchor) > 200) c.moveTarget = { x: anchor.x, y: anchor.y };
     return;
   }
 
@@ -1993,6 +2004,12 @@ function update(dt) {
     // Cooldown tick
     for (let i = 0; i < c.skillCooldowns.length; i++) {
       if (c.skillCooldowns[i] > 0) c.skillCooldowns[i] = Math.max(0, c.skillCooldowns[i] - dt);
+    }
+
+    // Auto-retarget: if current target died, switch to next alive enemy automatically
+    if (c.target && !c.target.alive) {
+      const next = getEnemies(c, game).find(e => e.alive);
+      c.target = next || null;
     }
 
     // Casting

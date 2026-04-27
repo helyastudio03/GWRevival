@@ -459,6 +459,14 @@ footer {
   <section class="section" id="combat">
     <div class="section-title">Mécanique de combat</div>
 
+    <div class="subsection-title">Ciblage</div>
+    <ul>
+      <li>Clic gauche sur un personnage : sélectionner comme cible (ennemi → active l'auto-attaque)</li>
+      <li><kbd>Tab</kbd> : cycle entre les ennemis vivants</li>
+      <li><strong>Auto-retarget</strong> : si la cible meurt, le jeu sélectionne automatiquement le prochain ennemi vivant</li>
+      <li>La cible sélectionnée est indiquée par un anneau pointillé rouge (ennemi) ou vert (allié) sur le canvas</li>
+    </ul>
+
     <div class="subsection-title">Dégâts physiques</div>
     <p>Les dégâts physiques dépendent de l'armure réelle de la cible et d'une éventuelle pénétration d'armure de l'attaquant.</p>
     <div class="formula">raw = minDmg + random(0, maxDmg - minDmg)<br>armor_effective = max(0, target.armor - attacker.armorPen)<br>dmg = raw × 0.5 ^ ((armor_effective - 60) / 40)</div>
@@ -517,7 +525,8 @@ footer {
         <ul style="margin-top:8px">
           <li>Réapparition au point de spawn initial (±30 px aléatoire)</li>
           <li>PV = 100% · Énergie = 50%</li>
-          <li>Toutes les conditions sont effacées</li>
+          <li>Toutes conditions/enchantements/maléfices effacés ; incantation annulée</li>
+          <li>Cible et auto-attaque réinitialisées (état propre)</li>
           <li>Effet visuel cyan au spawn</li>
         </ul>
       </div>
@@ -1519,7 +1528,9 @@ footer {
         <td>
           Trie l'équipe par % PV. Si un allié &lt;85% PV : se rapproche et soigne.<br>
           &lt;75% → Prière de Guérison · &lt;50% → Parole de Guérison · &lt;25% → Santé Insufflée + Intervention Divine.<br>
-          Retire les conditions automatiquement. Si tout le monde est full PV : reste près de l'allié le plus fort.
+          Retire les conditions automatiquement.<br>
+          <strong>Idle (équipe en bonne santé)</strong> : pose des enchantements de protection préventifs (Gardien, Esprit Protecteur, Lien Spirituel) sur l'allié le plus vulnérable.
+          Attaque les ennemis à portée si aucun sort n'est disponible. Reste à &lt;200 px de l'équipe.
         </td>
       </tr>
       <tr>
