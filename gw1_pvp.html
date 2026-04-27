@@ -42,6 +42,17 @@ canvas#arena { border: 2px solid #444; cursor: crosshair; display: block; }
   flex-direction: column; gap: 12px;
 }
 #overlay-sub { font-size: 14px; color: #aaa; }
+#overlay-stats { display: flex; gap: 16px; margin-top: 6px; font-size: 11px; }
+.stats-group { display: flex; flex-direction: column; gap: 4px; }
+.stats-title { font-size: 12px; font-weight: bold; color: #adf; text-align: center; }
+.stats-table { border-collapse: collapse; }
+.stats-table th, .stats-table td { padding: 2px 8px; border: 1px solid #444; text-align: right; }
+.stats-table th { background: #223; color: #ccc; font-weight: normal; font-size: 10px; }
+.stats-table td:first-child { text-align: left; color: #eef; }
+.stats-table tr.ally-row td { color: #7cf; }
+.stats-table tr.enemy-row td { color: #f88; }
+.stats-table tr.ally-row td:first-child { color: #adf; }
+.stats-table tr.enemy-row td:first-child { color: #faa; }
 #restart-btn {
   background: #6a4; color: #fff; border: none;
   padding: 6px 20px; font-size: 14px; cursor: pointer; border-radius: 4px; margin-top: 4px;
@@ -201,6 +212,7 @@ canvas#arena { border: 2px solid #444; cursor: crosshair; display: block; }
     <div id="overlay">
       <div id="overlay-msg"></div>
       <div id="overlay-sub"></div>
+      <div id="overlay-stats"></div>
       <button id="restart-btn" onclick="startGame()">↺ Rejouer</button>
     </div>
   </div>
@@ -510,6 +522,8 @@ function dealDmg(attacker, target, dmg, type, game) {
   }
 
   target.hp -= dmg;
+  if (attacker.stats) attacker.stats.dmgDealt  += dmg;
+  if (target.stats)   target.stats.dmgReceived += dmg;
   // Chiffre flottant dégâts
   const isCrit = dmg > 45;
   addFloat(game, target.x, target.y - target.radius,
@@ -518,17 +532,19 @@ function dealDmg(attacker, target, dmg, type, game) {
   game.log(`${target.name} -${dmg} (${type})`, 'log-dmg');
   spawnFx(game, target.x, target.y, '#f44', 25, 0.3);
 
-  if (target.hp <= 0) killChar(target, game);
+  if (target.hp <= 0) killChar(target, game, null, attacker);
 }
 
 const REZ_TIME = 15; // secondes avant réapparition au shrine
 
-function killChar(c, g, msg) {
+function killChar(c, g, msg, killer) {
   if (!c.alive) return;
   c.alive = false; c.hp = 0;
   c.conditions = {}; c.enchantments = {}; c.hexes = {}; c.casting = null;
   c.rezTimer = REZ_TIME;
   g.deathCount[c.team] = (g.deathCount[c.team] || 0) + 1;
+  if (c.stats) c.stats.deaths++;
+  if (killer && killer.stats) killer.stats.kills++;
   g.log(msg || `☠ ${c.name} est mort !`, 'log-sys');
   spawnFx(g, c.x, c.y, '#f008', 80, 1.0);
   addFloat(g, c.x, c.y - c.radius - 10, '☠', '#888', 18);
@@ -1569,6 +1585,7 @@ function makeChar(build, team, x, y, isPlayer) {
     usedOneUse: new Array(8).fill(false),
     aiTimer: 0, rezTimer: 0,
     velocity: 0,
+    stats: { dmgDealt: 0, dmgReceived: 0, healsGiven: 0, kills: 0, deaths: 0 },
   };
 }
 
@@ -1625,6 +1642,7 @@ document.getElementById('arena').addEventListener('click', e => {
   }
   if (hit) {
     game.player.target = hit;
+    if (isEnemy(game.player, hit)) game.player.autoAttack = true;
   } else {
     game.player.moveTarget = { x: mx, y: my };
   }
@@ -1991,15 +2009,18 @@ function update(dt) {
       if (hasCond(c, 'weakness')) atkSpd *= 0.5;
       c.attackTimer += dt;
       const interval = 1 / atkSpd;
-      if (c.attackTimer >= interval) {
-        c.attackTimer = 0;
-        const tgt = c.target;
-        if (tgt && tgt.alive && isEnemy(c, tgt)) {
-          if (dist(c, tgt) <= c.attackRange + 20) {
+      const tgt = c.target;
+      if (tgt && tgt.alive && isEnemy(c, tgt)) {
+        const d = dist(c, tgt);
+        if (d <= c.attackRange + 20) {
+          if (c.attackTimer >= interval) {
+            c.attackTimer = 0;
             SK.w_auto.use(c, tgt, game);
-          } else if (!c.isPlayer) {
-            c.moveTarget = { x: tgt.x, y: tgt.y };
           }
+        } else {
+          // Chase target continuously (player: WASD overrides in moveChar)
+          c.moveTarget = { x: tgt.x, y: tgt.y };
+          if (c.attackTimer >= interval) c.attackTimer = 0;
         }
       }
     }
@@ -2061,6 +2082,7 @@ function update(dt) {
   for (const c of game.chars) {
     if (c.alive && hpSnap[c.name] !== undefined && c.hp > hpSnap[c.name] + 1) {
       const healed = Math.floor(c.hp - hpSnap[c.name]);
+      if (c.stats) c.stats.healsGiven += healed;
       addFloat(game, c.x, c.y - c.radius - 10, `+${healed}`, '#5efa8a', 12);
     }
   }
@@ -2483,24 +2505,49 @@ function render() {
     // Class symbol (white icon drawn on top)
     drawClassSymbol(ctx, c.x, c.y, c.radius, c.classKey);
 
-    // Knockdown indicator
+    // Bar layout (used by cast bar, HP bar, energy bar)
+    const barW = c.radius * 2 + 4, barH = 5;
+    const bx = c.x - barW/2, by = c.y - c.radius - 14;
+
+    // Knockdown indicator — flat ellipse beneath the character
     if (hasCond(c, 'knockdown')) {
-      ctx.fillStyle = '#fc0'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText('⬇', c.x, c.y + 5);
+      ctx.save();
+      ctx.translate(c.x, c.y + c.radius * 0.2);
+      ctx.scale(1.7, 0.38);
+      ctx.beginPath();
+      ctx.arc(0, 0, c.radius, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 200, 0, 0.40)';
+      ctx.fill();
+      ctx.strokeStyle = '#fc0';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+      ctx.restore();
     }
 
-    // Casting arc
+    // Cast bar (horizontal, above HP/energy bars)
     if (c.casting) {
-      const prog = c.castTimer / c.casting.sk.cast;
+      const prog = clamp(c.castTimer / c.casting.sk.cast, 0, 1);
+      const cbW = barW, cbH = 5;
+      const cbX = bx, cbY = by - 10;
       ctx.save();
-      ctx.strokeStyle = '#fa0'; ctx.lineWidth = 4; ctx.globalAlpha = 0.8;
-      ctx.beginPath(); ctx.arc(c.x, c.y, c.radius + 8, -Math.PI/2, -Math.PI/2 + prog * Math.PI*2); ctx.stroke();
+      ctx.fillStyle = '#1a1505';
+      ctx.fillRect(cbX, cbY, cbW, cbH);
+      ctx.fillStyle = `rgba(255,165,0,${0.55 + 0.45 * prog})`;
+      ctx.fillRect(cbX, cbY, cbW * prog, cbH);
+      ctx.strokeStyle = '#8a6400';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(cbX, cbY, cbW, cbH);
+      const skLabel = (c.casting.sk.name || '').slice(0, 12);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 5px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(skLabel, c.x, cbY + cbH / 2);
+      ctx.textBaseline = 'alphabetic';
       ctx.restore();
     }
 
     // HP bar (above)
-    const barW = c.radius * 2 + 4, barH = 5;
-    const bx = c.x - barW/2, by = c.y - c.radius - 14;
     const hpPct = clamp(c.hp / c.maxHp, 0, 1);
     ctx.fillStyle = '#222'; ctx.fillRect(bx, by, barW, barH);
     ctx.fillStyle = hpPct > 0.5 ? '#4a4' : hpPct > 0.25 ? '#aa4' : '#a44';
@@ -2854,8 +2901,36 @@ function endGame(won) {
   document.getElementById('overlay-msg').textContent = won ? '⚔ VICTOIRE !' : '☠ DÉFAITE';
   const dA = game.deathCount[TEAM_ALLY]||0, dE = game.deathCount[TEAM_ENEMY]||0;
   document.getElementById('overlay-sub').textContent = won
-    ? `L'équipe ennemie a atteint 8 morts. Vos pertes : ${dA}.`
-    : `Votre équipe a atteint 8 morts. Pertes ennemies : ${dE}.`;
+    ? `Ennemis : ${dE} morts — Alliés : ${dA} morts`
+    : `Alliés : ${dA} morts — Ennemis : ${dE} morts`;
+
+  // Per-character stats table
+  const statsDiv = document.getElementById('overlay-stats');
+  if (statsDiv) {
+    const allies  = game.chars.filter(c => c.team === TEAM_ALLY);
+    const enemies = game.chars.filter(c => c.team === TEAM_ENEMY);
+    function buildTable(chars, title, rowClass) {
+      let html = `<div class="stats-group"><div class="stats-title">${title}</div>`;
+      html += '<table class="stats-table"><thead><tr>';
+      html += '<th>Personnage</th><th>Dmg</th><th>Reçu</th><th>Soins</th><th>Kills</th><th>Morts</th>';
+      html += '</tr></thead><tbody>';
+      for (const c of chars) {
+        const s = c.stats || {};
+        html += `<tr class="${rowClass}">
+          <td>${c.name}</td>
+          <td>${Math.round(s.dmgDealt   || 0)}</td>
+          <td>${Math.round(s.dmgReceived|| 0)}</td>
+          <td>${Math.round(s.healsGiven || 0)}</td>
+          <td>${s.kills  || 0}</td>
+          <td>${s.deaths || 0}</td>
+        </tr>`;
+      }
+      html += '</tbody></table></div>';
+      return html;
+    }
+    statsDiv.innerHTML = buildTable(allies, 'Alliés', 'ally-row') + buildTable(enemies, 'Ennemis', 'enemy-row');
+  }
+
   game.log(won ? '=== VICTOIRE ===' : '=== DÉFAITE ===', won ? 'log-heal' : 'log-dmg');
 }
 
