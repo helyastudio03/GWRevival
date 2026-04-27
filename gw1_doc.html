@@ -370,7 +370,7 @@ footer {
 <div class="doc-header">
   <h1>⚔ Guild Wars PvP Prototype</h1>
   <div class="subtitle">Documentation complète — Mécaniques · Classes · Skills · Builds · Maps</div>
-  <div class="version-badge">HTML5 Canvas · 10 classes · 20 builds · ~55 skills · 3 maps</div>
+  <div class="version-badge">HTML5 Canvas · 10 classes · 20 builds · ~55 skills · 4 maps</div>
 </div>
 
 <nav>
@@ -899,6 +899,10 @@ footer {
       <tr><td>Timer mort</td><td><span style="color:#6df">■</span> Bleu (alliés) / <span style="color:#f86">■</span> Orange (ennemis)</td><td>10px</td><td>Compte à rebours au-dessus du corps</td></tr>
     </table></div>
 
+    <div class="subsection-title">Style visuel</div>
+    <p>Thème <strong>dark fantasy RPG</strong> : interface aux tons brun-ambre chaud, bordures dorées, titre avec lueur dorée. Les personnages utilisent une couleur de classe plus vive (opacité 0.72) sur un fond d'équipe cobalt (alliés) ou cramoisi (ennemis), avec une légère lueur de la couleur de classe. Les barres PV/énergie sur le canvas utilisent les mêmes tons (vert vif → jaune → rouge, bleu profond).</p>
+    <p>Les fonds de map sont prégénérés une seule fois sur un <strong>canvas offscreen</strong> (seeded RNG → reproductible) et mis en cache. Chaque frame se réduit à un unique <code>drawImage()</code> pour les éléments statiques.</p>
+
     <div class="subsection-title">Effets visuels en jeu</div>
     <ul>
       <li><strong>Cercle de sélection</strong> — anneau pointillé vert (allié ciblé) ou rouge (ennemi ciblé) autour du personnage</li>
@@ -1407,50 +1411,64 @@ footer {
 
   <!-- SECTION 8 : MAPS -->
   <section class="section" id="maps">
-    <div class="section-title">Maps <span>3 arènes</span></div>
-    <p>Une map aléatoire est choisie à chaque partie. Chaque map fait <strong>1400×800 px</strong> (monde) avec des spawns symétriques alliés à gauche, ennemis à droite. Le Flag Stand est toujours au centre (700, 400).</p>
+    <div class="section-title">Maps <span>4 arènes</span></div>
+    <p>Une map aléatoire est choisie à chaque partie. Chaque map fait <strong>1400×800 px</strong> (monde) avec des spawns symétriques alliés à gauche, ennemis à droite. Le Flag Stand est toujours au centre (700, 400). Les fonds sont <strong>prégénérés sur un canvas offscreen</strong> (texture herbe + pavés + murs en pierre) et dessinés en une seule opération par frame.</p>
     <div class="card-grid">
       <div class="map-card">
         <h3>⚔ Forteresse de Koga</h3>
-        <p class="muted" style="font-size:0.84em">Fond vert sombre, murs en pierre beige. Couloir central avec passages latéraux. Map la plus équilibrée.</p>
+        <p class="muted" style="font-size:0.84em">Forêt sombre entourant une forteresse en pierre. Couloir central, passages latéraux, arbres aux angles. Map la plus équilibrée.</p>
         <div class="map-features">
-          <span class="badge badge-util">Murs pierre</span>
+          <span class="badge badge-util">Herbe + arbres</span>
           <span class="badge badge-util">3 couloirs</span>
           <span class="badge badge-util">Symétrique</span>
         </div>
         <div style="margin-top:10px; font-size:0.82em">
           <div><span class="muted">Spawns alliés :</span> (160,400) + 3 positions</div>
           <div><span class="muted">Spawns ennemis :</span> (1240,400) + 3 positions</div>
-          <div><span class="muted">Couleur fond :</span> <span style="color:#9dbd80">#1e201a</span></div>
+          <div><span class="muted">Fond :</span> vert forêt sombre avec texture d'herbe procédurale</div>
         </div>
       </div>
       <div class="map-card">
         <h3>🌋 Île de la Tempête</h3>
-        <p class="muted" style="font-size:0.84em">Fond brun volcanique. Zones de lave infligeant des dégâts continus. Passages étroits autour des obstacles.</p>
+        <p class="muted" style="font-size:0.84em">Île volcanique, roche sombre, blocs de lave infligeant des dégâts continus. Passages étroits autour des rochers.</p>
         <div class="map-features">
           <span class="badge badge-dmg">Lave (dégâts)</span>
-          <span class="badge badge-util">Murs rochers</span>
+          <span class="badge badge-util">Rochers décoratifs</span>
           <span class="badge badge-util">Passages étroits</span>
         </div>
         <div style="margin-top:10px; font-size:0.82em">
           <div><span class="muted">Spawns alliés :</span> (180,400) + 3 positions</div>
           <div><span class="muted">Spawns ennemis :</span> (1220,400) + 3 positions</div>
-          <div><span class="muted">Couleur fond :</span> <span style="color:#8a4a2a">#160c08</span></div>
-          <div class="warn-box" style="margin-top:6px; padding:6px 10px">La lave inflige des dégâts continus aux personnages qui la traversent. La mort en lave compte comme une mort normale.</div>
+          <div><span class="muted">Fond :</span> roche volcanique sombre sans herbe</div>
+          <div class="warn-box" style="margin-top:6px; padding:6px 10px">La lave inflige 30 dégâts/s en continu. La mort en lave compte comme une mort normale.</div>
         </div>
       </div>
       <div class="map-card">
         <h3>🏰 Cour d'Ascalon</h3>
-        <p class="muted" style="font-size:0.84em">Fond bleu-gris, murs violacés. Spawns asymétriques (alliés en haut-gauche, ennemis en bas-droite). Layout en diagonale.</p>
+        <p class="muted" style="font-size:0.84em">Cour pavée en ruines, dalles de pierre chaudes, spawns asymétriques. Rangées de piliers, cluster central, quelques fleurs.</p>
         <div class="map-features">
-          <span class="badge badge-util">Murs violets</span>
+          <span class="badge badge-util">Pavés Ascalon</span>
           <span class="badge badge-util">Spawns asymétriques</span>
           <span class="badge badge-util">Diagonal</span>
         </div>
         <div style="margin-top:10px; font-size:0.82em">
           <div><span class="muted">Spawns alliés :</span> (150,200) + 3 positions</div>
           <div><span class="muted">Spawns ennemis :</span> (1250,600) + 3 positions</div>
-          <div><span class="muted">Couleur fond :</span> <span style="color:#8888bb">#18181e</span></div>
+          <div><span class="muted">Fond :</span> pierre chaude sombre, pas d'herbe, fleurs et pierres décoratives</div>
+        </div>
+      </div>
+      <div class="map-card">
+        <h3>🌿 Île du Sans-Nom</h3>
+        <p class="muted" style="font-size:0.84em">Inspirée du tutoriel PvP de Guild Wars. Vaste prairie verte, deux plateformes de pierre, pont central, arbres luxuriants et fleurs sauvages.</p>
+        <div class="map-features">
+          <span class="badge badge-heal">Herbe luxuriante</span>
+          <span class="badge badge-util">Arbres + buissons</span>
+          <span class="badge badge-util">Plateformes pierre</span>
+        </div>
+        <div style="margin-top:10px; font-size:0.82em">
+          <div><span class="muted">Spawns alliés :</span> (180,400) + 3 positions</div>
+          <div><span class="muted">Spawns ennemis :</span> (1220,400) + 3 positions</div>
+          <div><span class="muted">Fond :</span> vert forêt dense, texture herbe vivace, fleurs colorées</div>
         </div>
       </div>
     </div>
@@ -1459,10 +1477,12 @@ footer {
     <div class="tbl-wrap"><table>
       <tr><th>Élément</th><th>Description</th></tr>
       <tr><td>Murs (AABB)</td><td>Collision résolue par le chevauchement minimal. Les personnages ne peuvent pas traverser les murs.</td></tr>
-      <tr><td>Chemins (paths)</td><td>Zones de sol colorées qui indiquent les passages praticables.</td></tr>
+      <tr><td>Chemins (paths)</td><td>Pavés cobblestone (grille 32px) indiquant les passages praticables.</td></tr>
+      <tr><td>Herbe (grass)</td><td>Texture procédurale prégénérée avec RNG reproductible (seed par map). Petits traits aléatoires pour variation visuelle.</td></tr>
+      <tr><td>Arbres</td><td>Décoration visuelle multicouche (ombre + tronc + feuillage sombre + clair + reflet). Les grands arbres ont un bloc de collision rectangulaire sous-jacent.</td></tr>
       <tr><td>Flag Stand</td><td>Zone circulaire au centre exact de la map (700, 400), rayon 90 px.</td></tr>
-      <tr><td>Spawns</td><td>4 points de spawn par équipe. Le joueur prend toujours le point 0, les alliés les points 1-3.</td></tr>
-      <tr><td>Minimap</td><td>140×80 px en haut à droite, échelle 1/10. Montre murs, lave, personnages et viewport actuel.</td></tr>
+      <tr><td>Spawns</td><td>4 points par équipe marqués par des cercles pointillés (bleu = alliés, rouge = ennemis) sur le fond prégénéré.</td></tr>
+      <tr><td>Minimap</td><td>140×80 px en haut à droite, fond = couleur de map. Montre murs, lave, personnages et viewport.</td></tr>
     </table></div>
   </section>
 
@@ -1590,7 +1610,7 @@ footer {
     <span>10 classes</span>
     <span>20 builds jouables</span>
     <span>~55 compétences</span>
-    <span>3 maps</span>
+    <span>4 maps</span>
     <span>HTML5 Canvas · JavaScript</span>
   </div>
   <div style="color:#444; font-size:0.75em">
