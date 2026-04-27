@@ -432,7 +432,8 @@ footer {
           <div class="keybind-row"><kbd>S</kbd><span>Reculer</span></div>
           <div class="keybind-row"><kbd>Q</kbd><span>Gauche</span></div>
           <div class="keybind-row"><kbd>D</kbd><span>Droite</span></div>
-          <div class="keybind-row"><kbd>Clic</kbd><span>Cibler / se déplacer</span></div>
+          <div class="keybind-row"><kbd>Clic ennemi</kbd><span>Cibler + activer l'auto-attaque</span></div>
+          <div class="keybind-row"><kbd>Clic sol</kbd><span>Se déplacer</span></div>
           <div class="keybind-row"><kbd>Tab</kbd><span>Changer de cible</span></div>
           <div class="keybind-row"><kbd>Espace</kbd><span>Toggle auto-attaque</span></div>
         </div>
@@ -451,7 +452,7 @@ footer {
         </div>
       </div>
     </div>
-    <div class="info-box">Le slot 8 est toujours le <strong>Signet de Résurrection</strong> (ou une compétence de soin/utilité selon le build). L'auto-attaque (Espace) active/désactive les attaques automatiques de base.</div>
+    <div class="info-box">Le slot 8 est toujours le <strong>Signet de Résurrection</strong> (ou une compétence de soin/utilité selon le build). L'auto-attaque (Espace) active/désactive les attaques automatiques de base. <strong>Cliquer sur un ennemi active automatiquement l'auto-attaque.</strong> Une fois activée, le personnage poursuit sa cible s'il est hors de portée — ZQSD prend la priorité sur ce déplacement automatique. L'auto-attaque reprend automatiquement après l'exécution d'un skill.</div>
   </section>
 
   <!-- SECTION 3 : MÉCANIQUE DE COMBAT -->
@@ -522,6 +523,21 @@ footer {
       </div>
     </div>
     <div class="warn-box">Condition de victoire : la première équipe à accumuler <strong>8 morts totaux</strong> perd la partie. Le compteur est affiché dans le HUD sous forme de 8 pips.</div>
+
+    <div class="subsection-title">Écran de fin de partie</div>
+    <p>À la fin du combat, un overlay s'affiche avec le résultat (⚔ VICTOIRE / ☠ DÉFAITE) et un <strong>tableau de statistiques détaillé par personnage</strong>, séparé par équipe :</p>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>Colonne</th><th>Description</th></tr>
+        <tr><td><strong>Personnage</strong></td><td>Nom du personnage</td></tr>
+        <tr><td><strong>Dmg</strong></td><td>Dégâts totaux infligés</td></tr>
+        <tr><td><strong>Reçu</strong></td><td>Dégâts totaux subis</td></tr>
+        <tr><td><strong>Soins</strong></td><td>Points de vie récupérés via soins</td></tr>
+        <tr><td><strong>Kills</strong></td><td>Nombre d'ennemis mis à terre (dernier coup)</td></tr>
+        <tr><td><strong>Morts</strong></td><td>Nombre de fois mort pendant la partie</td></tr>
+      </table>
+    </div>
+    <p class="muted" style="font-size:0.85em">Ces statistiques sont tracées en temps réel pendant la partie : dégâts via <code>dealDmg()</code>, morts via <code>killChar()</code>, soins via le snapshot HP à chaque frame.</p>
   </section>
 
   <!-- SECTION 4 : CONDITIONS / MALÉFICES / ENCHANTEMENTS -->
@@ -539,7 +555,7 @@ footer {
         <tr><td><strong>Faiblesse</strong></td><td><span class="swatch" style="background:#880"></span>Kaki</td><td>Dégâts physiques ×0.34</td><td>Suppression d'État</td></tr>
         <tr><td><strong>Cécité</strong></td><td><span class="swatch" style="background:#666"></span>Gris</td><td>90% de chance de rater</td><td>Suppression d'État</td></tr>
         <tr><td><strong>Blessure Profonde</strong></td><td><span class="swatch" style="background:#900"></span>Rouge foncé</td><td>PV max ×0.80</td><td>Suppression d'État</td></tr>
-        <tr><td><strong>À Terre</strong> (knockdown)</td><td><span class="swatch" style="background:#fc0"></span>Jaune</td><td>Immobilisé + cast interrompu (1.5–2s)</td><td>Durée seulement</td></tr>
+        <tr><td><strong>À Terre</strong> (knockdown)</td><td><span class="swatch" style="background:#fc0"></span>Jaune</td><td>Immobilisé + cast interrompu (1.5–2s) — le personnage affiche une ellipse aplatie dorée sous son sprite</td><td>Durée seulement</td></tr>
       </table>
     </div>
 
@@ -881,8 +897,9 @@ footer {
       <li><strong>Effets d'impact</strong> — cercles qui s'expandent et s'estompent à l'impact ou au cast</li>
       <li><strong>Zones AoE</strong> — cercles semi-transparents colorés (feu = orange, glace = bleu clair, esprits = rouge/cyan)</li>
       <li><strong>Points de condition</strong> — petits cercles colorés sous les personnages indiquant les conditions actives</li>
-      <li><strong>Barre de cast</strong> — barre dorée sous le joueur pendant l'incantation</li>
-      <li><strong>Barre PV</strong> — rouge au-dessus de chaque personnage vivant</li>
+      <li><strong>Barre de cast</strong> — barre horizontale orangée au-dessus des barres PV/énergie, affichée sur <em>tous</em> les personnages en train d'incanter (alliés comme ennemis) ; le nom du skill est inscrit à l'intérieur</li>
+      <li><strong>Barre PV</strong> — verte→jaune→rouge au-dessus de chaque personnage vivant</li>
+      <li><strong>Knockdown</strong> — ellipse aplatie dorée dessinée sous le personnage renversé (via transformation ctx.scale)</li>
       <li><strong>Corps</strong> — cercle gris semi-transparent avec timer de respawn au-dessus</li>
     </ul>
 
