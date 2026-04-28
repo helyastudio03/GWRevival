@@ -370,7 +370,7 @@ footer {
 <div class="doc-header">
   <h1>⚔ Guild Wars PvP Prototype</h1>
   <div class="subtitle">Documentation complète — Mécaniques · Classes · Skills · Builds · Maps</div>
-  <div class="version-badge">HTML5 Canvas · 10 classes · 20 builds · ~55 skills · 4 maps</div>
+  <div class="version-badge">HTML5 Canvas · 10 classes · 20 builds · ~55 skills · 4 maps · viewport 900×620</div>
 </div>
 
 <nav>
@@ -399,7 +399,7 @@ footer {
         <ul>
           <li>4 vs 4 (joueur + 3 alliés IA contre 4 ennemis IA)</li>
           <li>Monde 1400×800 px avec caméra centrée sur le joueur</li>
-          <li>Viewport affiché : 700×500 px</li>
+          <li>Viewport affiché : 900×620 px</li>
           <li>Countdown 3-2-1 avant le début du combat</li>
           <li>Condition de victoire : première équipe à <strong>8 morts totaux</strong> perd</li>
           <li>Respawn automatique au shrine après <strong>15 secondes</strong></li>
@@ -411,11 +411,11 @@ footer {
           <li>Barre de 8 compétences avec cooldowns visuels</li>
           <li>Barres PV / Énergie / Incantation du joueur</li>
           <li>Panel alliés (PV, énergie, conditions)</li>
-          <li>Log de combat coloré en temps réel</li>
+          <li>Log de combat coloré en temps réel (format <code>attaquant → cible</code> pour toutes les actions)</li>
           <li>Chiffres flottants (dégâts, soins, crits)</li>
           <li>Tooltips détaillés au survol des skills</li>
           <li>Minimap avec caméra, murs, personnages</li>
-          <li>HUD Flag Stand (moral + compteur de morts)</li>
+          <li>Panneau Statistiques (morts par équipe + barres de moral du Flag Stand) — hors canvas, dans le panel latéral</li>
         </ul>
       </div>
     </div>
@@ -428,15 +428,14 @@ footer {
       <div class="card">
         <div class="subsection-title" style="margin-top:0">Déplacement &amp; cible</div>
         <div class="keybind-grid">
-          <div class="keybind-row"><kbd>Z</kbd><span>Avancer</span></div>
-          <div class="keybind-row"><kbd>S</kbd><span>Reculer</span></div>
-          <div class="keybind-row"><kbd>Q</kbd><span>Gauche</span></div>
-          <div class="keybind-row"><kbd>D</kbd><span>Droite</span></div>
-          <div class="keybind-row"><kbd>Clic ennemi</kbd><span>Cibler + activer l'auto-attaque</span></div>
-          <div class="keybind-row"><kbd>Clic sol</kbd><span>Se déplacer</span></div>
-          <div class="keybind-row"><kbd>Tab</kbd><span>Cibler l'ennemi suivant (plus proche en premier) + activer auto-attaque</span></div>
-          <div class="keybind-row"><kbd>Shift+Tab</kbd><span>Cibler l'ennemi précédent</span></div>
-          <div class="keybind-row"><kbd>Espace</kbd><span>Toggle auto-attaque</span></div>
+          <div class="keybind-row"><kbd>Z/Q/S/D</kbd><span>Déplacer (WASD aussi)</span></div>
+          <div class="keybind-row"><kbd>Clic ennemi</kbd><span>Cibler un ennemi (sans activer l'auto-attaque)</span></div>
+          <div class="keybind-row"><kbd>Clic allié</kbd><span>Cibler un allié (soins, buffs)</span></div>
+          <div class="keybind-row"><kbd>Clic sol</kbd><span>Se déplacer vers ce point</span></div>
+          <div class="keybind-row"><kbd>Tab</kbd><span>Ennemi suivant (tri par distance)</span></div>
+          <div class="keybind-row"><kbd>Shift+Tab</kbd><span>Ennemi précédent</span></div>
+          <div class="keybind-row"><kbd>Ctrl+1–8</kbd><span>Cibler l'allié du slot correspondant</span></div>
+          <div class="keybind-row"><kbd>Espace</kbd><span>Toggle auto-attaque (active la poursuite automatique)</span></div>
         </div>
       </div>
       <div class="card">
@@ -453,7 +452,7 @@ footer {
         </div>
       </div>
     </div>
-    <div class="info-box">Le slot 8 est toujours le <strong>Signet de Résurrection</strong> (ou une compétence de soin/utilité selon le build). L'auto-attaque (Espace) active/désactive les attaques automatiques de base. <strong>Cliquer sur un ennemi active automatiquement l'auto-attaque.</strong> Une fois activée, le personnage poursuit sa cible s'il est hors de portée — ZQSD prend la priorité sur ce déplacement automatique. L'auto-attaque reprend automatiquement après l'exécution d'un skill.</div>
+    <div class="info-box">Le slot 8 est toujours le <strong>Signet de Résurrection</strong> (ou une compétence de soin/utilité selon le build). L'auto-attaque (<kbd>Espace</kbd>) est le seul moyen d'activer la poursuite automatique de la cible. <strong>Cliquer ou Tab sur un ennemi cible sans déplacer ni activer l'auto-attaque.</strong> Pour cibler un allié (soins, buff), cliquer dessus sur le canvas ou utiliser <kbd>Ctrl+numéro</kbd>. Les noms des compétences n'apparaissent plus sur les icônes — passez la souris pour voir le tooltip.</div>
   </section>
 
   <!-- SECTION 3 : MÉCANIQUE DE COMBAT -->
@@ -462,10 +461,13 @@ footer {
 
     <div class="subsection-title">Ciblage</div>
     <ul>
-      <li>Clic gauche sur un personnage : sélectionner comme cible (ennemi → active l'auto-attaque)</li>
-      <li><kbd>Tab</kbd> / <kbd>Shift+Tab</kbd> : cycle entre les ennemis vivants, triés du plus proche au plus loin ; activer automatiquement l'auto-attaque sur la cible sélectionnée</li>
+      <li><strong>Clic gauche</strong> sur un personnage : sélectionner comme cible — sans déclencher de déplacement ni d'auto-attaque</li>
+      <li><kbd>Tab</kbd> / <kbd>Shift+Tab</kbd> : cycle entre les ennemis vivants, triés du plus proche au plus loin — sans activer l'auto-attaque</li>
+      <li><kbd>Ctrl+1–8</kbd> : cible directement l'allié du slot indiqué (utile pour soigner ou protéger rapidement)</li>
+      <li><kbd>Espace</kbd> : active l'auto-attaque — une fois activée, le personnage suit et attaque automatiquement la cible dès qu'elle est à portée</li>
       <li><strong>Auto-retarget</strong> : si la cible meurt, le jeu sélectionne automatiquement le prochain ennemi vivant</li>
       <li>La cible sélectionnée est indiquée par un anneau pointillé rouge (ennemi) ou vert (allié) sur le canvas</li>
+      <li><strong>Portée mêlée</strong> : les compétences instantanées de corps-à-corps (portée ≤ 160) ne consomment ni énergie ni rechargement si la cible est hors de portée</li>
     </ul>
 
     <div class="subsection-title">Dégâts physiques</div>
@@ -1557,6 +1559,7 @@ footer {
 
     <div class="subsection-title">Pathfinding A*</div>
     <p>Chaque map génère une <strong>grille de navigation</strong> (70×40 cellules de 20 px) marquant les murs comme bloqués (avec 1 cellule de marge). Les personnages IA calculent un chemin <strong>A*</strong> 8-directionnel vers leur cible, mis à jour dès que la destination a bougé de plus d'une cellule (~20 px) — avec un délai minimum de 0.2 s décalé aléatoirement entre personnages pour éviter les pics CPU. Lorsque la destination tombe dans une cellule bloquée (mur), un BFS de rayon ≤ 5 cellules (<code>nearestOpenCell</code>) snap automatiquement le point de départ et d'arrivée vers la cellule libre la plus proche, évitant les blocages. Si A* échoue malgré tout, le personnage utilise <code>steerDir</code> (sondage angulaire) pour contourner les obstacles en ligne quasi-directe, et retente A* après 0.05 s au lieu de 0.2 s.</p>
+    <p><strong>Détection de blocage (stuck detection)</strong> : si un personnage IA n'a pas avancé de plus de 25 px en 2 secondes alors qu'il a une destination active, le chemin est effacé et la destination est décalée aléatoirement de ±90 px pour forcer un recalcul A* sur un itinéraire alternatif. Ce mécanisme évite les cas où un personnage se retrouve coincé derrière un angle de mur à répéter en boucle des projectiles qui percutent ce mur.</p>
 
     <div class="subsection-title">Spike coordonné</div>
     <p>Toutes les 12–18 secondes, l'équipe ennemie déclenche un <strong>spike coordonné</strong> : tous les damage dealers IA focalisent la même cible alliée pendant 4 secondes. La priorité est donnée aux healers adverses (Moine, Ritualiste). La cible est signalée visuellement par des <strong>anneaux rouges pulsants</strong> sur le canvas et un message « ⚡ SPIKE » flottant.</p>
