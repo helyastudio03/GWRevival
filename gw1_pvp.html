@@ -32,9 +32,8 @@ h1 { color: #c89020; font-size: 1.1em; margin-bottom: 6px; letter-spacing: 4px; 
 
 #game-container { display: flex; gap: 8px; }
 
-#arena-wrap { position: relative; display: inline-block; border: 2px solid #8a6428; box-shadow: 0 0 24px rgba(140,100,40,0.35); }
-canvas#arena { cursor: crosshair; display: block; }
-canvas#bg-canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
+#arena-wrap { position: relative; }
+canvas#arena { border: 2px solid #8a6428; cursor: crosshair; display: block; box-shadow: 0 0 24px rgba(140,100,40,0.35); }
 
 #overlay {
   position: absolute; top: 0; left: 0; right: 0; bottom: 0;
@@ -225,7 +224,6 @@ canvas#bg-canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
 
 <div id="game-container">
   <div id="arena-wrap">
-    <canvas id="bg-canvas" width="900" height="620"></canvas>
     <canvas id="arena" width="900" height="620"></canvas>
     <div id="overlay">
       <div id="overlay-msg"></div>
@@ -2538,10 +2536,11 @@ function update(dt) {
 // ── RENDER ────────────────────────────────────────────────────────
 const canvas = document.getElementById('arena');
 const ctx = canvas.getContext('2d');
-const bgCanvas = document.getElementById('bg-canvas');
-const bgCtx = bgCanvas.getContext('2d');
-// Dirty-render: viewport-sized bg cache, only rebuilt on camera move
-let _bgCamX = NaN, _bgCamY = NaN;
+// Dirty-render: offscreen viewport-sized bg cache, rebuilt only on camera move
+const _bgView = document.createElement('canvas');
+_bgView.width = AW; _bgView.height = AH;
+const _bgViewCtx = _bgView.getContext('2d');
+let _bgViewCamX = NaN, _bgViewCamY = NaN;
 
 // ── CLASS SYMBOLS ─────────────────────────────────────────────────
 // ── FLAG STAND ────────────────────────────────────────────────────
@@ -3015,20 +3014,19 @@ function generateBgCanvas(map) {
 function render() {
   const map = game.map;
 
-  // ── Dirty bg layer: only repaint bg-canvas when camera moved ─────
-  if (map && (CAM.x !== _bgCamX || CAM.y !== _bgCamY)) {
+  // ── Dirty bg: rebuild offscreen slice only when camera moved ─────
+  if (map && (CAM.x !== _bgViewCamX || CAM.y !== _bgViewCamY)) {
     generateBgCanvas(map);
-    bgCtx.setTransform(1, 0, 0, 1, 0, 0);
-    bgCtx.clearRect(0, 0, AW, AH);
-    bgCtx.drawImage(map.bgCanvas, -CAM.x, -CAM.y);
-    _bgCamX = CAM.x; _bgCamY = CAM.y;
-  } else if (!map) {
-    bgCtx.fillStyle = '#0b0908'; bgCtx.fillRect(0, 0, AW, AH);
+    _bgViewCtx.clearRect(0, 0, AW, AH);
+    _bgViewCtx.drawImage(map.bgCanvas, -CAM.x, -CAM.y);
+    _bgViewCamX = CAM.x; _bgViewCamY = CAM.y;
   }
 
-  // Dynamic canvas: clear only (bg shows through from bg-canvas)
+  // Clear main canvas, draw cached bg, then dynamic elements
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, AW, AH);
+  if (map) ctx.drawImage(_bgView, 0, 0);
+  else { ctx.fillStyle = '#0b0908'; ctx.fillRect(0, 0, AW, AH); }
 
   // ── Caméra ───────────────────────────────────────────────────────
   ctx.save();
@@ -3516,7 +3514,7 @@ function startGame() {
   // Reset state
   document.getElementById('log-entries').innerHTML = '';
   game.chars = []; game.effects = []; game.projectiles = []; game.aoeZones = [];
-  _bgCamX = NaN; _bgCamY = NaN; // force bg-canvas rebuild on new map
+  _bgViewCamX = NaN; _bgViewCamY = NaN; // force bg rebuild on new map
   game.floatingTexts = [];
   game.over = false; game.running = false; game.logLines = [];
   game.flagStand = null;
