@@ -1916,22 +1916,28 @@ function moveChar(c, dt) {
     if (dd < 4) { c.moveTarget = null; c.pathPoints = []; c.isMoving = false; }
     else {
       // Recompute A* path when destination moved significantly or path is empty
-      c.pathTimer = Math.max(0, c.pathTimer - 0.016);
+      c.pathTimer = Math.max(0, c.pathTimer - dt);
       const pd = c.pathDest ? Math.hypot(c.moveTarget.x - c.pathDest.x, c.moveTarget.y - c.pathDest.y) : Infinity;
       if ((pd > GRID_CELL * 1.5 || !c.pathPoints.length) && c.pathTimer <= 0 && game.map) {
         c.pathDest = { x: c.moveTarget.x, y: c.moveTarget.y };
-        c.pathPoints = astar(game.map, c.x, c.y, c.moveTarget.x, c.moveTarget.y) || [];
-        c.pathTimer = 0.18 + Math.random() * 0.07; // stagger between characters
+        const path = astar(game.map, c.x, c.y, c.moveTarget.x, c.moveTarget.y);
+        c.pathPoints = path || [];
+        c.pathTimer = path ? (0.18 + Math.random() * 0.07) : 0.05;
       }
-      // Follow next waypoint (or go direct if no path found)
+      // Follow next waypoint; steerDir fallback when A* found no path
       let wx = c.moveTarget.x, wy = c.moveTarget.y;
-      if (c.pathPoints.length) {
+      const onPath = c.pathPoints.length > 0;
+      if (onPath) {
         wx = c.pathPoints[0].x; wy = c.pathPoints[0].y;
         if (Math.hypot(wx - c.x, wy - c.y) < GRID_CELL * 0.65) c.pathPoints.shift();
       }
       const pl = Math.hypot(wx - c.x, wy - c.y);
       if (pl < 2) { c.isMoving = false; }
-      else { dx = (wx - c.x) / pl; dy = (wy - c.y) / pl; c.isMoving = true; }
+      else {
+        let fdx = (wx - c.x) / pl, fdy = (wy - c.y) / pl;
+        if (!onPath) { const s = steerDir(c, fdx, fdy); fdx = s.dx; fdy = s.dy; }
+        dx = fdx; dy = fdy; c.isMoving = true;
+      }
     }
   } else {
     c.isMoving = false;
@@ -2325,8 +2331,18 @@ function update(dt) {
     const pdx = proj.tx - proj.x, pdy = proj.ty - proj.y;
     const pd = Math.hypot(pdx, pdy);
     if (pd < 10) { proj.done = true; proj.onArrive && proj.onArrive(); continue; }
-    proj.x += (pdx / pd) * proj.speed * dt;
-    proj.y += (pdy / pd) * proj.speed * dt;
+    const step = proj.speed * dt;
+    const nx = proj.x + (pdx / pd) * step;
+    const ny = proj.y + (pdy / pd) * step;
+    proj.traveled = (proj.traveled || 0) + step;
+    if (proj.traveled > 50 && game.map) {
+      let blocked = false;
+      for (const w of game.map.walls) {
+        if (nx > w.x && nx < w.x + w.w && ny > w.y && ny < w.y + w.h) { blocked = true; break; }
+      }
+      if (blocked) { proj.done = true; spawnFx(game, proj.x, proj.y, '#888', 14, 0.25); continue; }
+    }
+    proj.x = nx; proj.y = ny;
   }
   game.projectiles = game.projectiles.filter(proj => !proj.done);
 
@@ -2619,13 +2635,32 @@ function buildNavGrid(map) {
   map.navGrid = g;
 }
 
+// Snap a blocked grid cell to the nearest open neighbour (BFS, radius ≤ 5 cells)
+function nearestOpenCell(nav, gtx, gty) {
+  if (!nav[gty * GRID_W + gtx]) return { x: gtx, y: gty };
+  for (let r = 1; r < 6; r++) {
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue; // border ring only
+        const nx = gtx + dx, ny = gty + dy;
+        if (nx < 0 || nx >= GRID_W || ny < 0 || ny >= GRID_H) continue;
+        if (!nav[ny * GRID_W + nx]) return { x: nx, y: ny };
+      }
+    }
+  }
+  return { x: gtx, y: gty };
+}
+
 function astar(map, sx, sy, tx, ty) {
   if (!map.navGrid) return null;
   const nav = map.navGrid;
-  const gsx = clamp(Math.floor(sx / GRID_CELL), 0, GRID_W - 1);
-  const gsy = clamp(Math.floor(sy / GRID_CELL), 0, GRID_H - 1);
-  const gtx = clamp(Math.floor(tx / GRID_CELL), 0, GRID_W - 1);
-  const gty = clamp(Math.floor(ty / GRID_CELL), 0, GRID_H - 1);
+  const rawGsx = clamp(Math.floor(sx / GRID_CELL), 0, GRID_W - 1);
+  const rawGsy = clamp(Math.floor(sy / GRID_CELL), 0, GRID_H - 1);
+  const rawGtx = clamp(Math.floor(tx / GRID_CELL), 0, GRID_W - 1);
+  const rawGty = clamp(Math.floor(ty / GRID_CELL), 0, GRID_H - 1);
+  // Snap start & end to nearest open cells so A* always has valid endpoints
+  const { x: gsx, y: gsy } = nearestOpenCell(nav, rawGsx, rawGsy);
+  const { x: gtx, y: gty } = nearestOpenCell(nav, rawGtx, rawGty);
   if (gsx === gtx && gsy === gty) return [];
 
   const gScore = new Float32Array(GRID_W * GRID_H).fill(1e9);

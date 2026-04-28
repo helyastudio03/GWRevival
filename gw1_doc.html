@@ -912,7 +912,7 @@ footer {
     <div class="subsection-title">Effets visuels en jeu</div>
     <ul>
       <li><strong>Cercle de sélection</strong> — anneau pointillé vert (allié ciblé) ou rouge (ennemi ciblé) autour du personnage</li>
-      <li><strong>Projectiles</strong> — petits cercles colorés se déplaçant de la source vers la cible (feu = orange, foudre = jaune, flèche = kaki)</li>
+      <li><strong>Projectiles</strong> — petits cercles colorés se déplaçant de la source vers la cible (feu = orange, foudre = jaune, flèche = kaki) ; les projectiles sont <strong>bloqués par les murs</strong> (après 50 px de vol) et produisent un flash gris à l'impact. Seuls les sorts venant « du ciel » (Pluie de Météores, Tempête de Feu, Blizzard) ignorent les obstacles.</li>
       <li><strong>Effets d'impact</strong> — cercles qui s'expandent et s'estompent à l'impact ou au cast</li>
       <li><strong>Zones AoE</strong> — cercles semi-transparents colorés (feu = orange, glace = bleu clair, esprits = rouge/cyan)</li>
       <li><strong>Points de condition</strong> — petits cercles colorés sous les personnages indiquant les conditions actives</li>
@@ -1556,7 +1556,7 @@ footer {
     <p>L'IA se met à jour toutes les 0.3–0.6 secondes par personnage (timer aléatoire pour éviter la synchronisation). Chaque classe a un arbre de comportement distinct.</p>
 
     <div class="subsection-title">Pathfinding A*</div>
-    <p>Chaque map génère une <strong>grille de navigation</strong> (70×40 cellules de 20 px) marquant les murs comme bloqués (avec 1 cellule de marge). Les personnages IA calculent un chemin <strong>A*</strong> 8-directionnel vers leur cible, mis à jour dès que la destination a bougé de plus d'une cellule (~20 px) — avec un délai minimum de 0.2 s décalé aléatoirement entre personnages pour éviter les pics CPU. En l'absence de chemin (destination dans un mur), le personnage va en ligne droite.</p>
+    <p>Chaque map génère une <strong>grille de navigation</strong> (70×40 cellules de 20 px) marquant les murs comme bloqués (avec 1 cellule de marge). Les personnages IA calculent un chemin <strong>A*</strong> 8-directionnel vers leur cible, mis à jour dès que la destination a bougé de plus d'une cellule (~20 px) — avec un délai minimum de 0.2 s décalé aléatoirement entre personnages pour éviter les pics CPU. Lorsque la destination tombe dans une cellule bloquée (mur), un BFS de rayon ≤ 5 cellules (<code>nearestOpenCell</code>) snap automatiquement le point de départ et d'arrivée vers la cellule libre la plus proche, évitant les blocages. Si A* échoue malgré tout, le personnage utilise <code>steerDir</code> (sondage angulaire) pour contourner les obstacles en ligne quasi-directe, et retente A* après 0.05 s au lieu de 0.2 s.</p>
 
     <div class="subsection-title">Spike coordonné</div>
     <p>Toutes les 12–18 secondes, l'équipe ennemie déclenche un <strong>spike coordonné</strong> : tous les damage dealers IA focalisent la même cible alliée pendant 4 secondes. La priorité est donnée aux healers adverses (Moine, Ritualiste). La cible est signalée visuellement par des <strong>anneaux rouges pulsants</strong> sur le canvas et un message « ⚡ SPIKE » flottant.</p>
