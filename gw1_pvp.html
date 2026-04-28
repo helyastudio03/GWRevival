@@ -139,6 +139,7 @@ canvas#arena { border: 2px solid #8a6428; cursor: crosshair; display: block; box
 }
 .skill-slot.on-cd .skill-cd-overlay { display: flex; }
 .skill-toggle-active { border-color: #f80 !important; background: #2a1800 !important; }
+.skill-queued { border-color: #4f4 !important; box-shadow: 0 0 8px rgba(80,255,80,0.6), inset 0 0 4px rgba(80,255,80,0.15) !important; }
 
 #hint { font-size: 9px; color: #6a5a38; text-align: center; }
 
@@ -259,7 +260,7 @@ canvas#arena { border: 2px solid #8a6428; cursor: crosshair; display: block; box
     <div id="tt-desc"></div>
     <div id="tt-stats"></div>
   </div>
-  <div id="hint">ZQSD / WASD : Déplacer &nbsp;|&nbsp; Clic gauche : Cibler &nbsp;|&nbsp; 1–8 : Compétences &nbsp;|&nbsp; Tab : Cible suivante &nbsp;|&nbsp; Espace : Auto-attaque</div>
+  <div id="hint">ZQSD / WASD : Déplacer &nbsp;|&nbsp; Clic gauche : Cibler &nbsp;|&nbsp; 1–8 : Compétences &nbsp;|&nbsp; Tab : Cible suivante &nbsp;|&nbsp; Espace : Auto-attaque &nbsp;|&nbsp; Appuyer sur une compétence pendant un cast la met en file</div>
 </div>
 
 <script>
@@ -527,8 +528,10 @@ function getAllies(c, game)     { return game.chars.filter(x => x.team === c.tea
 function interruptCast(target, attacker, g) {
   if (!target.casting) return false;
   if (target.casting.sk.cast <= 0.5) return false; // fast casts not interrupted
-  g.log(`⚡ ${attacker.name} interrompt ${target.name} !`, 'log-hex');
+  const aName = typeof attacker === 'string' ? attacker : attacker.name;
+  g.log(`⚡ ${aName} interrompt ${target.name} !`, 'log-hex');
   target.casting = null; target.castTimer = 0;
+  target.queuedSkill = null;
   spawnFx(g, target.x, target.y, '#ff4', 40, 0.35);
   return true;
 }
@@ -543,6 +546,7 @@ function addCond(target, name, duration, game) {
   if (name === 'knockdown' && target.casting && target.casting.sk.cast > 0.5) {
     target.casting = null; target.castTimer = 0;
   }
+  if (name === 'knockdown') target.queuedSkill = null;
 }
 
 function addEnch(target, name, duration, game) {
@@ -642,26 +646,60 @@ function killChar(c, g, msg, killer) {
   if (!c.alive) return;
   c.alive = false; c.hp = 0;
   c.conditions = {}; c.enchantments = {}; c.hexes = {}; c.casting = null;
+  c.queuedSkill = null;
   c.rezTimer = REZ_TIME;
+  // Death Penalty: −15% max HP per death, stacks up to −60%
+  c.dp = Math.min(4, (c.dp || 0) + 1);
+  c.maxHp = Math.max(1, Math.floor((c.baseMaxHp + (c.bonusMaxHp||0)) * (1 - c.dp * 0.15)));
   g.deathCount[c.team] = (g.deathCount[c.team] || 0) + 1;
   if (c.stats) c.stats.deaths++;
   if (killer && killer.stats) killer.stats.kills++;
-  g.log(msg || `☠ ${c.name} est mort !`, 'log-sys');
+  const dpNote = c.dp > 0 ? ` (DP −${c.dp * 15}%)` : '';
+  g.log(msg || `☠ ${c.name} est mort !${dpNote}`, 'log-sys');
   spawnFx(g, c.x, c.y, '#f008', 80, 1.0);
   addFloat(g, c.x, c.y - c.radius - 10, '☠', '#888', 18);
+  // Kill morale: every 3 deaths of one team = morale for the other
+  const killerTeam = c.team === TEAM_ALLY ? TEAM_ENEMY : TEAM_ALLY;
+  if (g.deathCount[c.team] % 3 === 0) applyKillMorale(killerTeam, g);
 }
 
 function respawnChar(c, g) {
   c.alive = true;
+  // Recompute maxHp/maxEnergy factoring DP and team morale level
+  c.maxHp = Math.max(1, Math.floor((c.baseMaxHp + (c.bonusMaxHp||0)) * (1 - (c.dp||0) * 0.15)));
+  c.maxEnergy = c.baseMaxEnergy + Math.floor(c.baseMaxEnergy * 0.10 * ((g.teamMoraleLevel||{})[c.team]||0));
   c.hp = c.maxHp; c.energy = Math.floor(c.maxEnergy * 0.5);
   c.conditions = {}; c.enchantments = {}; c.hexes = {};
   c.x = c.spawnX + rnd(-30, 30); c.y = c.spawnY + rnd(-30, 30);
-  c.rezTimer = 0; c.casting = null; c.castTimer = 0;
+  c.rezTimer = 0; c.casting = null; c.castTimer = 0; c.queuedSkill = null;
   c.target = null; c.autoAttack = false; c.attackTimer = 0;
   c.pathPoints = []; c.pathDest = null; c.pathTimer = 0;
-  g.log(`✦ ${c.name} réapparaît au shrine !`, 'log-heal');
+  const dpNote = c.dp > 0 ? ` (DP −${c.dp * 15}%)` : '';
+  g.log(`✦ ${c.name} réapparaît au shrine !${dpNote}`, 'log-heal');
   spawnFx(g, c.x, c.y, '#0ff', 80, 1.0);
   addFloat(g, c.x, c.y, 'RESPAWN', '#0ff', 14);
+}
+
+function applyKillMorale(team, g) {
+  if (!g.teamMoraleLevel) g.teamMoraleLevel = { 0: 0, 1: 0 };
+  g.teamMoraleLevel[team]++;
+  const teamName = team === TEAM_ALLY ? 'Alliée' : 'Ennemie';
+  g.log(`🏆 Équipe ${teamName} : Moral ! +5% PV max, +10% Énergie max`, team === TEAM_ALLY ? 'log-heal' : 'log-dmg');
+  const level = g.teamMoraleLevel[team];
+  for (const c of g.chars.filter(x => x.team === team)) {
+    c.bonusMaxHp = (c.bonusMaxHp || 0) + Math.floor(c.baseMaxHp * 0.05);
+    const newMaxHp = Math.max(1, Math.floor((c.baseMaxHp + c.bonusMaxHp) * (1 - (c.dp||0) * 0.15)));
+    c.maxEnergy = c.baseMaxEnergy + Math.floor(c.baseMaxEnergy * 0.10 * level);
+    if (c.alive) {
+      c.maxHp = newMaxHp;
+      c.hp = Math.min(c.hp + Math.floor(c.maxHp * 0.05), c.maxHp);
+      c.energy = Math.min(c.energy, c.maxEnergy);
+      spawnFx(g, c.x, c.y, '#ffd700', 55, 0.8);
+      addFloat(g, c.x, c.y - c.radius - 10, '🏆 MORAL !', '#ffd700', 12);
+    } else {
+      c.maxHp = newMaxHp;
+    }
+  }
 }
 
 function spawnFx(game, x, y, color, radius, duration) {
@@ -775,15 +813,23 @@ const SK = {
     name:'Signet de Résurrection', icon:'✨', cost:0, cast:3, recharge:0, oneUse:true,
     desc:'Ressuscite un allié (25% PV)',
     use(me, tgt, g) {
-      const dead = g.chars.find(c => c.team === me.team && !c.alive);
+      const dead = (tgt && !tgt.alive && tgt.team === me.team && tgt !== me) ? tgt
+        : g.chars.find(c => c.team === me.team && !c.alive && c !== me);
       if (!dead) { g.log('Aucun allié mort', 'log-sys'); return; }
-      dead.alive = true; dead.hp = Math.floor(dead.maxHp * 0.25);
+      dead.alive = true;
+      dead.maxHp = Math.max(1, Math.floor((dead.baseMaxHp + (dead.bonusMaxHp||0)) * (1 - (dead.dp||0) * 0.15)));
+      dead.hp = Math.floor(dead.maxHp * 0.25);
       dead.energy = Math.floor(dead.maxEnergy * 0.10);
       dead.conditions = {}; dead.hexes = {}; dead.enchantments = {};
+      dead.casting = null; dead.castTimer = 0; dead.queuedSkill = null;
+      dead.rezTimer = 0;
+      dead.pathPoints = []; dead.pathDest = null; dead.pathTimer = 0;
       dead.x = clamp(me.x + rnd(-50,50), 20, WORLD_W-20);
       dead.y = clamp(me.y + rnd(-50,50), 20, WORLD_H-20);
-      g.log(`${dead.name} ressuscité !`, 'log-heal');
+      const dpStr = dead.dp > 0 ? ` (DP −${dead.dp*15}%)` : '';
+      g.log(`${dead.name} ressuscité !${dpStr}`, 'log-heal');
       spawnFx(g, dead.x, dead.y, '#fff', 80, 1.0);
+      addFloat(g, dead.x, dead.y, 'RESSUSCITÉ', '#fff', 13);
     }
   },
 
@@ -987,7 +1033,7 @@ const SK = {
     desc:'Interrompt l\'incantation ennemie',
     use(me, tgt, g) {
       if (!tgt || !isEnemy(me,tgt)) return;
-      if (tgt.casting) { tgt.casting = null; tgt.castTimer = 0; dealDmg(me, tgt, 15, 'mental', g); g.log(`${me.name} interrompt ${tgt.name} !`, 'log-hex'); }
+      if (tgt.casting) { tgt.casting = null; tgt.castTimer = 0; tgt.queuedSkill = null; dealDmg(me, tgt, 15, 'mental', g); g.log(`${me.name} interrompt ${tgt.name} !`, 'log-hex'); }
       else g.log(`${tgt.name} n\'incante pas`, 'log-sys');
     }
   },
@@ -1048,6 +1094,21 @@ const SK = {
       if (!tgt || !isEnemy(me,tgt)) return;
       if (hasHex(me,'backfire')) dealDmg(me, me, 60, 'maléfice', g);
       addHex(tgt, 'spiteful_spirit', 15, g);
+    }
+  },
+
+  me_powerblock: {
+    name:'Blocage de Pouvoir', icon:'🔒', cost:10, cast:0.25, recharge:15, range:600, isSpell:true,
+    desc:'Interrompt un sort et met ce sort en rechargement 20s',
+    use(me, tgt, g) {
+      if (!tgt || !isEnemy(me, tgt)) return;
+      if (!tgt.casting) { g.log(`${me.name} tente de bloquer – rien à interrompre`, 'log-sys'); return; }
+      const blockedIdx = tgt.casting.idx;
+      const blockedName = tgt.casting.sk.name;
+      interruptCast(tgt, me.name, g);
+      tgt.skillCooldowns[blockedIdx] = 20;
+      g.log(`⛔ ${blockedName} bloqué pour 20s !`, 'log-hex');
+      spawnFx(g, tgt.x, tgt.y, '#f08', 50, 0.5);
     }
   },
 
@@ -1652,7 +1713,7 @@ const ALLY_POOL = [
   { ...BASE.monk,      name:'Lyra (Moine Prot)',   skills:['w_auto','mo_reversalfortune','mo_protspirit','mo_spiritbond','mo_guardian','mo_removecond','mo_woh','w_ressig'] },
   { ...BASE.ritualist, name:'Sora (Ritualiste)',   healBonus:20, skills:['w_auto','rt_mendbodyandsoul','rt_weaponofwarding','rt_splinterweapon','rt_ancestorsrage','rt_bloodsong','rt_shelter','w_ressig'] },
   { ...BASE.elementalist, name:'Zara (Élémentaliste)', skills:['e_flare','e_fireball','e_chainlightning','e_blizzard','e_iceprism','e_gale','e_rodgorts','w_ressig'] },
-  { ...BASE.mesmer,    name:'Vael (Illusionniste)', skills:['e_flare','me_backfire','me_spiteful','me_empathy','me_interrupt','me_energysurge','me_nightmare','w_ressig'] },
+  { ...BASE.mesmer,    name:'Vael (Illusionniste)', skills:['e_flare','me_backfire','me_spiteful','me_empathy','me_powerblock','me_energysurge','me_nightmare','w_ressig'] },
   { ...BASE.paragon,   name:'Aras (Paragone)',      skills:['w_auto','p_tntf','p_anthemflame','p_standyourground','p_fallback','p_gfty','p_spearlightning','w_ressig'] },
 ];
 
@@ -1663,7 +1724,7 @@ const ENEMY_POOL = [
   { ...BASE.monk,      name:'Moine Enn.',       skills:['w_auto','mo_woh','mo_heal','mo_infuse','mo_drawconditions','mo_removecond','mo_protspirit','w_ressig'] },
   { ...BASE.monk,      name:'Moine Prot Enn.',  skills:['w_auto','mo_reversalfortune','mo_protspirit','mo_spiritbond','mo_guardian','mo_removecond','mo_woh','w_ressig'] },
   { ...BASE.elementalist, name:'Élémentaliste Enn.', skills:['e_flare','e_fireball','e_chainlightning','e_rodgorts','e_meteorshower','e_gale','e_blizzard','w_ressig'] },
-  { ...BASE.mesmer,    name:'Illusionniste Enn.', skills:['e_flare','me_backfire','me_spiteful','me_empathy','me_interrupt','me_energysurge','me_nightmare','w_ressig'] },
+  { ...BASE.mesmer,    name:'Illusionniste Enn.', skills:['e_flare','me_backfire','me_spiteful','me_empathy','me_powerblock','me_energysurge','me_nightmare','w_ressig'] },
   { ...BASE.necro,     name:'Nécromant Enn.',   skills:['e_flare','n_spitefulspirit','n_markofpain','n_weakenflesh','n_parasitic','me_imaginedhaste','me_backfire','w_ressig'] },
   { ...BASE.ranger,    name:'Rôdeur Enn.',      skills:['w_auto','r_cripplingshot','r_burningarrow','r_applypoison','r_distractingshot','r_barrage','w_sprint','w_ressig'] },
   { ...BASE.assassin,  name:'Assassin Enn.',    skills:['w_auto','a_shadowprison','a_goldenfang','a_hornsofox','a_twistingfangs','a_deathblossom','a_dash','w_ressig'] },
@@ -1679,11 +1740,13 @@ function makeChar(build, team, x, y, isPlayer) {
     team, x, y, isPlayer: !!isPlayer,
     spawnX: x, spawnY: y,
     hp: build.maxHp, energy: build.maxEnergy,
+    baseMaxHp: build.maxHp, baseMaxEnergy: build.maxEnergy,
+    bonusMaxHp: 0, dp: 0,
     conditions: {}, enchantments: {}, hexes: {},
     alive: true, isMoving: false,
     moveTarget: null, target: null,
     autoAttack: false, attackTimer: 0,
-    casting: null, castTimer: 0,
+    casting: null, castTimer: 0, queuedSkill: null,
     skillCooldowns: new Array(8).fill(0),
     usedOneUse: new Array(8).fill(false),
     aiTimer: 0, rezTimer: 0,
@@ -1702,6 +1765,7 @@ const game = {
   spike: null, spikeCooldown: 8,
   running: false, over: false,
   deathCount: { 0: 0, 1: 0 },
+  teamMoraleLevel: { 0: 0, 1: 0 },
   logLines: [],
   log(msg, cls = 'log-sys') {
     this.logLines.push({ msg, cls });
@@ -1775,7 +1839,11 @@ function useSkill(char, idx) {
   if (char.skillCooldowns[idx] > 0) return;
   if (sk.oneUse && char.usedOneUse[idx]) return;
   if (char.energy < sk.cost) return;
-  if (char.casting) return; // already casting
+  // Skill queue: if player is already casting, queue this skill for after cast
+  if (char.casting) {
+    if (char.isPlayer) char.queuedSkill = { idx };
+    return;
+  }
 
   if (sk.cast > 0) {
     char.casting = { skId, idx, sk, target: char.target };
@@ -1799,6 +1867,12 @@ function finishCast(char) {
   sk.use(char, target, game);
   startCooldown(char, idx, sk);
   if (sk.oneUse) char.usedOneUse[idx] = true;
+  // Execute queued skill immediately after cast completes
+  if (char.queuedSkill !== null) {
+    const qi = char.queuedSkill;
+    char.queuedSkill = null;
+    useSkill(char, qi.idx);
+  }
 }
 
 // ── MOVE ─────────────────────────────────────────────────────────
@@ -1951,6 +2025,14 @@ function aiUpdate(c, dt, g) {
 
   // ── Monk AI ──
   if (c.skills.includes('mo_woh') || c.skills.includes('mo_heal')) {
+    // Try to resurrect a fallen teammate first
+    const deadAlly = g.chars.find(x => x.team === c.team && !x.alive && x !== c);
+    if (deadAlly) {
+      const savedTgt = c.target;
+      c.target = deadAlly;
+      if (tryAiSkill(c, 'w_ressig', g)) return;
+      c.target = savedTgt;
+    }
     // Find most wounded ally (including self)
     const team = [c, ...allies];
     team.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
@@ -1990,10 +2072,19 @@ function aiUpdate(c, dt, g) {
     return;
   }
 
-  // ── Elementalist / Necromancer AI ──
+  // ── Elementalist / Mesmer / Necromancer AI ──
   if (c.skills.some(s => s.startsWith('e_') || s.startsWith('me_'))) {
-    // Pick weakest enemy
-    let tgt = enemies.reduce((best, e) => e.hp < best.hp ? e : best, enemies[0]);
+    // Mesmer energy denial: target highest-energy caster; others: target lowest HP
+    const hasDenial = c.skills.includes('me_energysurge') || c.skills.includes('me_powerblock');
+    let tgt;
+    if (hasDenial) {
+      const casters = enemies.filter(e => e.maxEnergy > 25);
+      tgt = casters.length
+        ? casters.reduce((best, e) => e.energy > best.energy ? e : best, casters[0])
+        : enemies.reduce((best, e) => e.hp < best.hp ? e : best, enemies[0]);
+    } else {
+      tgt = enemies.reduce((best, e) => e.hp < best.hp ? e : best, enemies[0]);
+    }
     c.target = tgt;
     // Keep distance
     const d = dist(c, tgt);
@@ -2003,7 +2094,11 @@ function aiUpdate(c, dt, g) {
     } else if (d > 420) {
       c.moveTarget = { x: clamp(tgt.x + rnd(-60,60), 30, WORLD_W-30), y: clamp(tgt.y + rnd(-60,60), 30, WORLD_H-30) };
     }
-    // Use skills in priority order
+    // Energy denial first, then other spells
+    if (hasDenial) {
+      if (tryAiSkill(c, 'me_powerblock', g)) return;
+      if (tryAiSkill(c, 'me_energysurge', g)) return;
+    }
     const spellSkills = c.skills.filter(s => s.startsWith('e_') || s.startsWith('me_') || s.startsWith('n_'));
     for (const sk of spellSkills) {
       if (tryAiSkill(c, sk, g)) break;
@@ -2938,6 +3033,15 @@ function render() {
     ctx.fillStyle = '#0e0a04'; ctx.fillRect(bx, by + 6, barW, 3);
     ctx.fillStyle = '#2858b0'; ctx.fillRect(bx, by + 6, barW * enPct, 3);
 
+    // Death Penalty badge (above name)
+    if (c.dp > 0) {
+      ctx.save();
+      ctx.fillStyle = '#ff3333';
+      ctx.font = 'bold 7px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`DP −${c.dp * 15}%`, c.x, c.y - c.radius - 26);
+      ctx.restore();
+    }
     // Name — blue for allies, red for enemies, gold for player
     ctx.fillStyle = isPlayer ? '#ffe066' : (c.team === TEAM_ALLY ? '#7bcfff' : '#ff7777');
     ctx.font = `${isPlayer ? 'bold ' : ''}10px sans-serif`;
@@ -3030,7 +3134,7 @@ function updateUI() {
   // Player bars
   const hpPct = clamp(p.hp / p.maxHp * 100, 0, 100);
   document.getElementById('hp-fill').style.width = hpPct + '%';
-  document.getElementById('hp-val').textContent = `${Math.ceil(p.hp)} / ${p.maxHp}`;
+  document.getElementById('hp-val').textContent = `${Math.ceil(p.hp)} / ${p.maxHp}${p.dp ? `  DP −${p.dp * 15}%` : ''}`;
   const enPct = clamp(p.energy / p.maxEnergy * 100, 0, 100);
   document.getElementById('energy-fill').style.width = enPct + '%';
   document.getElementById('energy-val').textContent = `${Math.floor(p.energy)} / ${p.maxEnergy}`;
@@ -3111,6 +3215,7 @@ function updateUI() {
     const used = sk.oneUse && p.usedOneUse[i];
     el.classList.toggle('on-cd', cd > 0 || used);
     el.classList.toggle('no-energy', noE && cd <= 0);
+    el.classList.toggle('skill-queued', !!(p.queuedSkill && p.queuedSkill.idx === i));
     const overlay = el.querySelector('.skill-cd-overlay');
     if (overlay) {
       if (used) overlay.textContent = '—';
@@ -3189,6 +3294,7 @@ function startGame() {
   game.flagStand = null;
   game.spike = null; game.spikeCooldown = 8;
   game.deathCount = { 0: 0, 1: 0 };
+  game.teamMoraleLevel = { 0: 0, 1: 0 };
 
   // --- Map aléatoire ---
   game.map = MAPS[Math.floor(Math.random() * MAPS.length)];

@@ -499,15 +499,18 @@ footer {
       <li>Chaque sort a un <strong>temps de cast</strong> (0.25s à 3s). Une barre de progression s'affiche sous le personnage.</li>
       <li>Recevoir un <strong>knockdown</strong> interrompt instantanément tout cast de durée &gt; 0.5s (Choc, Marteau Dévastateur, Charge du Taureau si la cible se déplace, etc.).</li>
       <li>Les skills d'interruption explicites (Tir Distrayant, Interruption mesmer) annulent le cast quelle que soit sa durée et remettent le skill en recharge.</li>
+      <li><strong>Blocage de Pouvoir</strong> (Mesmer) : interrompt un sort ET met ce skill spécifiquement en rechargement forcé de <strong>20 secondes</strong>.</li>
+      <li><strong>File de compétence (joueur uniquement)</strong> : appuyer sur une touche de compétence pendant un cast en cours la met en file d'attente (bordure verte). Elle s'exécute automatiquement dès la fin du cast. Si le cast est interrompu, la file est effacée.</li>
       <li>Les maléfices <strong>Retour de Flamme</strong> et <strong>Esprit Rancunier</strong> punissent chaque sort lancé avec des dégâts supplémentaires.</li>
     </ul>
 
-    <div class="subsection-title">Énergie</div>
+    <div class="subsection-title">Énergie &amp; privation</div>
     <ul>
       <li>Chaque compétence a un coût en énergie (0 à 25). L'énergie se régénère passivement selon la classe (2 à 4 /s).</li>
-      <li>Les mesmers peuvent <strong>drainer</strong> l'énergie ennemie (Surtension d'Énergie : −30 énergie).</li>
+      <li>Les mesmers peuvent <strong>drainer</strong> l'énergie ennemie : <strong>Surtension d'Énergie</strong> (−30 énergie + dégâts), <strong>Blocage de Pouvoir</strong> (interrupt + 20s CD forcé).</li>
+      <li>L'IA mesmer cible en priorité les <strong>lanceurs de sorts à haute énergie</strong> (Moine, Élémentaliste) pour maximiser l'efficacité de la privation d'énergie.</li>
       <li>Le maléfice <strong>Cauchemar</strong> draine 2 énergie/s en continu.</li>
-      <li>À la mort : l'énergie tombe à 0. Au respawn : 50% de l'énergie maximale.</li>
+      <li>À la mort : l'énergie tombe à 0. Au respawn : 50% de l'énergie maximale (bonus éventuel de Moral de kills).</li>
     </ul>
 
     <div class="subsection-title">Mort &amp; respawn</div>
@@ -515,17 +518,19 @@ footer {
       <div class="card">
         <strong>À la mort</strong>
         <ul style="margin-top:8px">
-          <li>PV = 0, toutes conditions/maléfices/enchantements supprimés</li>
+          <li>PV = 0, toutes conditions/maléfices/enchantements supprimés, file de compétence effacée</li>
           <li>Timer de résurrection : <strong>15 secondes</strong> (affiché au-dessus du corps)</li>
           <li>Le compteur de morts de l'équipe est incrémenté</li>
-          <li>Le <strong>Signet de Résurrection</strong> peut ressusciter un allié mort à 25% PV (usage unique)</li>
+          <li><strong>Death Penalty (DP)</strong> : chaque mort réduit les <strong>PV max de −15%</strong> (cumulatif jusqu'à −60% au bout de 4 morts). Affiché en rouge « DP −X% » au-dessus du nom du personnage.</li>
+          <li>Le <strong>Signet de Résurrection</strong> peut ressusciter un allié mort à 25% PV après 3s de cast (usage unique). L'IA Moine l'utilise activement dès qu'un allié tombe.</li>
         </ul>
       </div>
       <div class="card">
         <strong>Au respawn (shrine)</strong>
         <ul style="margin-top:8px">
           <li>Réapparition au point de spawn initial (±30 px aléatoire)</li>
-          <li>PV = 100% · Énergie = 50%</li>
+          <li>PV max recalculés : <code>baseMaxHp × moraleMult × (1 − dp × 0.15)</code></li>
+          <li>PV = 100% de ce max recalculé · Énergie = 50%</li>
           <li>Toutes conditions/enchantements/maléfices effacés ; incantation annulée</li>
           <li>Cible et auto-attaque réinitialisées (état propre)</li>
           <li>Effet visuel cyan au spawn</li>
@@ -1002,6 +1007,7 @@ footer {
     <div class="tbl-wrap"><table>
       <tr><th>Icône</th><th>Nom</th><th>E</th><th>Cast</th><th>CD</th><th>Portée</th><th>Description</th></tr>
       <tr><td>🔇</td><td>Interruption</td><td>5</td><td>—</td><td>8s</td><td>500</td><td>Interrompt l'incantation en cours + 15 dégâts mentaux.</td></tr>
+      <tr><td>🔒</td><td>Blocage de Pouvoir</td><td>10</td><td>0.25s</td><td>15s</td><td>600</td><td>Interrompt un sort et met <em>ce skill spécifique</em> en rechargement forcé 20s.</td></tr>
       <tr><td>💫</td><td>Surtension d'Énergie</td><td>10</td><td>2s</td><td>20s</td><td>500</td><td>Draine 30 énergie ennemie + dégâts = drain×2.</td></tr>
       <tr><td>🏃</td><td>Hâte Imaginaire <span class="badge badge-hex">MALÉFICE</span></td><td>10</td><td>1s</td><td>20s</td><td>500</td><td>Vitesse cible ×0.5 pendant 10s.</td></tr>
       <tr><td>💔</td><td>Empathie <span class="badge badge-hex">MALÉFICE</span></td><td>10</td><td>1s</td><td>15s</td><td>500</td><td>−20 PV à chaque attaque physique lancée (10s).</td></tr>
@@ -1514,6 +1520,17 @@ footer {
     </div>
     <div class="info-box">Formule : <code>dmg_final = dmg × (1 + morale × 0.01)</code>. À +10%, tous les dégâts sont augmentés de 10%. L'avantage s'accumule mais reste modéré — la composition d'équipe reste le facteur dominant.</div>
 
+    <div class="subsection-title">Moral de kills (bonus d'éliminations)</div>
+    <p>Indépendamment du Flag Stand, chaque équipe gagne un <strong>bonus de moral offensif</strong> toutes les <strong>3 éliminations</strong> :</p>
+    <ul>
+      <li><strong>+5% PV max</strong> pour tous les membres de l'équipe (vivants et morts)</li>
+      <li><strong>+10% Énergie max</strong> par stack de moral (cumulatif)</li>
+      <li>Les personnages vivants sont immédiatement soignés de 5% de leur nouveau PV max</li>
+      <li>Affiché par un effet doré « 🏆 MORAL ! » sur chaque membre de l'équipe</li>
+      <li>Maximum 2 déclenchements par partie (3 kills = 1er boost, 6 kills = 2ème boost)</li>
+    </ul>
+    <div class="info-box">Le moral de kills interagit avec le Death Penalty : <code>PV max effectifs = (baseMaxHp + bonusMaxHp) × (1 − dp × 0.15)</code>. Un personnage avec −45% DP mais +10% de bonus moral voit son malus partiellement compensé.</div>
+
     <div class="subsection-title">HUD Flag Stand</div>
     <p>En haut à gauche de l'écran :</p>
     <ul>
@@ -1543,6 +1560,12 @@ footer {
 
     <div class="subsection-title">Spike coordonné</div>
     <p>Toutes les 12–18 secondes, l'équipe ennemie déclenche un <strong>spike coordonné</strong> : tous les damage dealers IA focalisent la même cible alliée pendant 4 secondes. La priorité est donnée aux healers adverses (Moine, Ritualiste). La cible est signalée visuellement par des <strong>anneaux rouges pulsants</strong> sur le canvas et un message « ⚡ SPIKE » flottant.</p>
+
+    <div class="subsection-title">Résurrection (IA Moine)</div>
+    <p>L'IA Moine vérifie à chaque cycle si un allié est mort. Si c'est le cas et que le <strong>Signet de Résurrection</strong> est disponible (usage unique), il l'utilise en priorité sur le mort (le personnage ciblé si spécifié, sinon le premier mort trouvé). La résurrection prend 3 secondes de cast et ressuscite à 25% PV — avec le DP actuel du ressuscité.</p>
+
+    <div class="subsection-title">Privation d'énergie (IA Mesmer)</div>
+    <p>L'IA Mesmer cible en priorité <strong>les ennemis avec le plus d'énergie actuelle</strong> parmi les lanceurs de sorts (ceux dont l'énergie max dépasse 25). Elle utilise <strong>Blocage de Pouvoir</strong> et <strong>Surtension d'Énergie</strong> avant ses autres sorts, pour épuiser les healers et casters avant de les attaquer.</p>
 
     <div class="subsection-title">Comportements par classe</div>
     <div class="tbl-wrap"><table>
