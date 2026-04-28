@@ -901,7 +901,7 @@ footer {
 
     <div class="subsection-title">Style visuel</div>
     <p>Thème <strong>dark fantasy RPG</strong> : interface aux tons brun-ambre chaud, bordures dorées, titre avec lueur dorée. Les personnages utilisent une couleur de classe plus vive (opacité 0.72) sur un fond d'équipe cobalt (alliés) ou cramoisi (ennemis), avec une légère lueur de la couleur de classe. Les barres PV/énergie sur le canvas utilisent les mêmes tons (vert vif → jaune → rouge, bleu profond).</p>
-    <p>Les fonds de map sont prégénérés une seule fois sur un <strong>canvas offscreen</strong> (seeded RNG → reproductible) et mis en cache. Chaque frame se réduit à un unique <code>drawImage()</code> pour les éléments statiques.</p>
+    <p>Les fonds de map sont prégénérés une seule fois sur un <strong>canvas offscreen</strong> (seeded RNG → reproductible) et mis en cache. Chaque frame se réduit à un unique <code>drawImage()</code> pour les éléments statiques. Les ellipses (ombres d'arbres, buissons, pierres) sont dessinées via une fonction <code>drawEllipse()</code> paramétrique (<code>moveTo</code>/<code>lineTo</code>) compatible avec tous les navigateurs — la méthode native <code>ctx.ellipse()</code> n'est pas utilisée pour éviter les crashs sur certains environnements.</p>
 
     <div class="subsection-title">Effets visuels en jeu</div>
     <ul>

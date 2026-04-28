@@ -2442,11 +2442,25 @@ function drawClassSymbol(ctx, x, y, r, classKey) {
   ctx.restore();
 }
 
+function drawEllipse(ctx, cx, cy, rx, ry, rot) {
+  const cos = rot ? Math.cos(rot) : 1;
+  const sin = rot ? Math.sin(rot) : 0;
+  ctx.beginPath();
+  for (let i = 0; i <= 32; i++) {
+    const a = (i / 32) * Math.PI * 2;
+    const ex = rx * Math.cos(a), ey = ry * Math.sin(a);
+    const px = cx + cos * ex - sin * ey, py = cy + sin * ex + cos * ey;
+    i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+}
+
 function generateBgCanvas(map) {
   if (map.bgCanvas) return;
   const oc = document.createElement('canvas');
   oc.width = WORLD_W; oc.height = WORLD_H;
   const ox = oc.getContext('2d');
+  map.bgCanvas = oc; // set early so render() never calls drawImage(undefined)
   const rng = seededRng(map.seed || 1337);
 
   // Base fill
@@ -2517,9 +2531,9 @@ function generateBgCanvas(map) {
   for (const t of (map.trees || [])) {
     const r = t.r || 22;
     ox.fillStyle = 'rgba(0,0,0,0.22)';
-    ox.beginPath(); ox.ellipse(t.x + 5, t.y + r * 0.65, r * 0.9, r * 0.38, 0, 0, Math.PI*2); ox.fill();
+    drawEllipse(ox, t.x + 5, t.y + r * 0.65, r * 0.9, r * 0.38, 0); ox.fill();
     ox.fillStyle = '#5c3c1a';
-    ox.beginPath(); ox.ellipse(t.x, t.y + r * 0.55, r * 0.18, r * 0.4, 0, 0, Math.PI*2); ox.fill();
+    drawEllipse(ox, t.x, t.y + r * 0.55, r * 0.18, r * 0.4, 0); ox.fill();
     ox.fillStyle = t.darkColor || '#154a08';
     ox.beginPath(); ox.arc(t.x, t.y, r, 0, Math.PI*2); ox.fill();
     ox.fillStyle = t.color || '#236e12';
@@ -2534,7 +2548,7 @@ function generateBgCanvas(map) {
   for (const b of (map.bushes || [])) {
     const r = b.r || 12;
     ox.fillStyle = 'rgba(0,0,0,0.18)';
-    ox.beginPath(); ox.ellipse(b.x + 3, b.y + r * 0.6, r * 0.8, r * 0.32, 0, 0, Math.PI*2); ox.fill();
+    drawEllipse(ox, b.x + 3, b.y + r * 0.6, r * 0.8, r * 0.32, 0); ox.fill();
     ox.fillStyle = b.color || '#1d5210';
     ox.beginPath(); ox.arc(b.x, b.y, r, 0, Math.PI*2); ox.fill();
     ox.beginPath(); ox.arc(b.x + r * 0.6, b.y - r * 0.2, r * 0.7, 0, Math.PI*2); ox.fill();
@@ -2547,9 +2561,9 @@ function generateBgCanvas(map) {
   for (const d of (map.decor || [])) {
     if (d.type === 'stone') {
       ox.fillStyle = '#7e7260';
-      ox.beginPath(); ox.ellipse(d.x, d.y, d.r || 6, (d.r || 6) * 0.6, d.ang || 0, 0, Math.PI*2); ox.fill();
+      drawEllipse(ox, d.x, d.y, d.r || 6, (d.r || 6) * 0.6, d.ang || 0); ox.fill();
       ox.fillStyle = 'rgba(255,255,255,0.18)';
-      ox.beginPath(); ox.ellipse(d.x - (d.r||6)*0.22, d.y - (d.r||6)*0.22, (d.r||6)*0.38, (d.r||6)*0.28, d.ang||0, 0, Math.PI*2); ox.fill();
+      drawEllipse(ox, d.x - (d.r||6)*0.22, d.y - (d.r||6)*0.22, (d.r||6)*0.38, (d.r||6)*0.28, d.ang||0); ox.fill();
     } else if (d.type === 'flower') {
       const fc = d.color || '#ffdd44';
       for (let fi = 0; fi < 5; fi++) {
@@ -3158,9 +3172,13 @@ let lastTime = 0;
 function loop(ts) {
   const dt = Math.min((ts - lastTime) / 1000, 0.05);
   lastTime = ts;
-  update(dt);
-  render();
-  updateUI();
+  try {
+    update(dt);
+    render();
+    updateUI();
+  } catch (e) {
+    console.error('[loop]', e);
+  }
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(ts => { lastTime = ts; requestAnimationFrame(loop); });
