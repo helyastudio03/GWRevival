@@ -32,8 +32,9 @@ h1 { color: #c89020; font-size: 1.1em; margin-bottom: 6px; letter-spacing: 4px; 
 
 #game-container { display: flex; gap: 8px; }
 
-#arena-wrap { position: relative; }
-canvas#arena { border: 2px solid #8a6428; cursor: crosshair; display: block; box-shadow: 0 0 24px rgba(140,100,40,0.35), inset 0 0 12px rgba(0,0,0,0.5); }
+#arena-wrap { position: relative; display: inline-block; border: 2px solid #8a6428; box-shadow: 0 0 24px rgba(140,100,40,0.35); }
+canvas#arena { cursor: crosshair; display: block; }
+canvas#bg-canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
 
 #overlay {
   position: absolute; top: 0; left: 0; right: 0; bottom: 0;
@@ -89,6 +90,8 @@ canvas#arena { border: 2px solid #8a6428; cursor: crosshair; display: block; box
 .log-cond { color: #fa8; }
 .log-hex  { color: #c8f; }
 .log-sys  { color: #888; }
+.log-team-0 { border-left: 2px solid #4af; padding-left: 3px; }
+.log-team-1 { border-left: 2px solid #f44; padding-left: 3px; }
 
 #bottom-ui { margin-top: 6px; display: flex; flex-direction: column; align-items: center; gap: 5px; }
 
@@ -222,6 +225,7 @@ canvas#arena { border: 2px solid #8a6428; cursor: crosshair; display: block; box
 
 <div id="game-container">
   <div id="arena-wrap">
+    <canvas id="bg-canvas" width="900" height="620"></canvas>
     <canvas id="arena" width="900" height="620"></canvas>
     <div id="overlay">
       <div id="overlay-msg"></div>
@@ -514,6 +518,7 @@ const MAPS = [
   },
 ];
 const TEAM_ALLY = 0, TEAM_ENEMY = 1;
+const CLASS_ICON = { warrior:'⚔', monk:'✚', elementalist:'◆', mesmer:'⊗', necro:'☠', ranger:'➶', assassin:'⚡', ritualist:'⌾', dervish:'◎', paragon:'♦' };
 
 const COND = {
   bleeding:  { label:'Hémorragie', color:'#f33', dps:3 },
@@ -671,13 +676,15 @@ function dealDmg(attacker, target, dmg, type, game) {
   target.hp -= dmg;
   if (attacker.stats) attacker.stats.dmgDealt  += dmg;
   if (target.stats)   target.stats.dmgReceived += dmg;
-  // Chiffre flottant dégâts
+  // Chiffre flottant — couleur selon type et critique
   const isCrit = dmg > 45;
-  addFloat(game, target.x, target.y - target.radius,
-    `-${dmg}`, isCrit ? '#ff4' : (target.team === TEAM_ALLY ? '#f88' : '#faa'),
-    isCrit ? 16 : 13);
+  const dmgColor = isCrit ? '#ff4'
+    : type === 'physique' ? '#ddd'
+    : type === 'condition' ? '#f80'
+    : '#6af';
+  addFloat(game, target.x, target.y - target.radius, `-${dmg}`, dmgColor, isCrit ? 17 : 13);
   const aName = attacker.name || '?';
-  game.log(`${aName} → ${target.name} −${dmg} (${type})`, 'log-dmg');
+  game.log(`${aName} → ${target.name} −${dmg} (${type})`, 'log-dmg', target.team);
   spawnFx(game, target.x, target.y, '#f44', 25, 0.3);
 
   if (target.hp <= 0) killChar(target, game, null, attacker);
@@ -698,7 +705,7 @@ function killChar(c, g, msg, killer) {
   if (c.stats) c.stats.deaths++;
   if (killer && killer.stats) killer.stats.kills++;
   const dpNote = c.dp > 0 ? ` (DP −${c.dp * 15}%)` : '';
-  g.log(msg || `☠ ${c.name} est mort !${dpNote}`, 'log-sys');
+  g.log(msg || `☠ ${c.name} est mort !${dpNote}`, 'log-sys', c.team);
   spawnFx(g, c.x, c.y, '#f008', 80, 1.0);
   addFloat(g, c.x, c.y - c.radius - 10, '☠', '#888', 18);
   // Kill morale: every 3 deaths of one team = morale for the other
@@ -718,7 +725,7 @@ function respawnChar(c, g) {
   c.target = null; c.autoAttack = false; c.attackTimer = 0;
   c.pathPoints = []; c.pathDest = null; c.pathTimer = 0;
   const dpNote = c.dp > 0 ? ` (DP −${c.dp * 15}%)` : '';
-  g.log(`✦ ${c.name} réapparaît au shrine !${dpNote}`, 'log-heal');
+  g.log(`✦ ${c.name} réapparaît au shrine !${dpNote}`, 'log-heal', c.team);
   spawnFx(g, c.x, c.y, '#0ff', 80, 1.0);
   addFloat(g, c.x, c.y, 'RESPAWN', '#0ff', 14);
 }
@@ -849,7 +856,7 @@ const SK = {
     use(me, tgt, g) {
       const h = 82 + (me.healBonus||0);
       me.hp = Math.min(me.maxHp, me.hp + h);
-      g.log(`${me.name} se soigne de ${h} PV`, 'log-heal');
+      g.log(`${me.name} se soigne de ${h} PV`, 'log-heal', me.team);
       spawnFx(g, me.x, me.y, '#8f8', 50, 0.5);
     }
   },
@@ -871,7 +878,7 @@ const SK = {
       dead.x = clamp(me.x + rnd(-50,50), 20, WORLD_W-20);
       dead.y = clamp(me.y + rnd(-50,50), 20, WORLD_H-20);
       const dpStr = dead.dp > 0 ? ` (DP −${dead.dp*15}%)` : '';
-      g.log(`${dead.name} ressuscité !${dpStr}`, 'log-heal');
+      g.log(`${dead.name} ressuscité !${dpStr}`, 'log-heal', me.team);
       spawnFx(g, dead.x, dead.y, '#fff', 80, 1.0);
       addFloat(g, dead.x, dead.y, 'RESSUSCITÉ', '#fff', 13);
     }
@@ -886,7 +893,7 @@ const SK = {
       let h = 80 + (me.healBonus||0);
       if (t.hp / t.maxHp < 0.5) h = Math.floor(h * 1.5);
       t.hp = Math.min(t.maxHp, t.hp + h);
-      g.log(`${me.name} soigne ${t.name} de ${h} PV`, 'log-heal');
+      g.log(`${me.name} soigne ${t.name} de ${h} PV`, 'log-heal', me.team);
       spawnFx(g, t.x, t.y, '#8ff', 45, 0.5);
     }
   },
@@ -897,7 +904,7 @@ const SK = {
       const t = (tgt && !isEnemy(me,tgt)) ? tgt : me;
       const h = 90 + (me.healBonus||0);
       t.hp = Math.min(t.maxHp, t.hp + h);
-      g.log(`${me.name} soigne ${t.name} de ${h} PV`, 'log-heal');
+      g.log(`${me.name} soigne ${t.name} de ${h} PV`, 'log-heal', me.team);
       spawnFx(g, t.x, t.y, '#8f8', 50, 0.6);
     }
   },
@@ -1811,13 +1818,13 @@ const game = {
   deathCount: { 0: 0, 1: 0 },
   teamMoraleLevel: { 0: 0, 1: 0 },
   logLines: [],
-  log(msg, cls = 'log-sys') {
+  log(msg, cls = 'log-sys', team = null) {
     this.logLines.push({ msg, cls });
     if (this.logLines.length > 80) this.logLines.shift();
     const el = document.getElementById('log-entries');
     if (el) {
       const d = document.createElement('div');
-      d.className = 'log-entry ' + cls;
+      d.className = 'log-entry ' + cls + (team !== null ? ` log-team-${team}` : '');
       d.textContent = msg;
       el.appendChild(d);
       while (el.children.length > 60) el.removeChild(el.firstChild);
@@ -2332,6 +2339,7 @@ function update(dt) {
           const dmg = Math.floor(data.dmgAccum);
           data.dmgAccum -= dmg;
           c.hp = Math.max(0, c.hp - dmg);
+          addFloat(game, c.x, c.y - c.radius - 4, `-${dmg}`, '#f80', 11);
           if (c.hp <= 0) killChar(c, game, `☠ ${c.name} succombe à ses blessures !`);
         }
       }
@@ -2530,6 +2538,10 @@ function update(dt) {
 // ── RENDER ────────────────────────────────────────────────────────
 const canvas = document.getElementById('arena');
 const ctx = canvas.getContext('2d');
+const bgCanvas = document.getElementById('bg-canvas');
+const bgCtx = bgCanvas.getContext('2d');
+// Dirty-render: viewport-sized bg cache, only rebuilt on camera move
+let _bgCamX = NaN, _bgCamY = NaN;
 
 // ── CLASS SYMBOLS ─────────────────────────────────────────────────
 // ── FLAG STAND ────────────────────────────────────────────────────
@@ -3001,23 +3013,26 @@ function generateBgCanvas(map) {
 }
 
 function render() {
-  // Reset complet de la matrice — évite l'accumulation si un frame précédent a planté
+  const map = game.map;
+
+  // ── Dirty bg layer: only repaint bg-canvas when camera moved ─────
+  if (map && (CAM.x !== _bgCamX || CAM.y !== _bgCamY)) {
+    generateBgCanvas(map);
+    bgCtx.setTransform(1, 0, 0, 1, 0, 0);
+    bgCtx.clearRect(0, 0, AW, AH);
+    bgCtx.drawImage(map.bgCanvas, -CAM.x, -CAM.y);
+    _bgCamX = CAM.x; _bgCamY = CAM.y;
+  } else if (!map) {
+    bgCtx.fillStyle = '#0b0908'; bgCtx.fillRect(0, 0, AW, AH);
+  }
+
+  // Dynamic canvas: clear only (bg shows through from bg-canvas)
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, AW, AH);
 
   // ── Caméra ───────────────────────────────────────────────────────
   ctx.save();
   ctx.translate(-CAM.x, -CAM.y);
-
-  // ── Fond monde (prérendu) ─────────────────────────────────────────
-  const map = game.map;
-  if (map) {
-    generateBgCanvas(map);
-    ctx.drawImage(map.bgCanvas, 0, 0);
-  } else {
-    ctx.fillStyle = '#0b0908';
-    ctx.fillRect(0, 0, WORLD_W, WORLD_H);
-  }
 
   // ── Zones de dégâts (lave, eau acide…) ────────────────────────────
   if (map) {
@@ -3091,15 +3106,19 @@ function render() {
     const isSelected = game.player && game.player.target === c;
     const isPlayer   = c.isPlayer;
 
+    // Walk animation: subtle vertical bob when moving
+    const walkOff = c.isMoving ? Math.sin(Date.now() * 0.009 + c.x * 0.04) * 2.2 : 0;
+    const cy = c.y + walkOff;
+
     // Spike indicator — pulsing red rings
     if (game.spike && game.spike.target === c) {
       const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 120);
       ctx.save();
       ctx.strokeStyle = `rgba(255,60,0,${0.55 + pulse * 0.45})`;
       ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(c.x, c.y, c.radius + 8 + pulse * 6, 0, Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(c.x, cy, c.radius + 8 + pulse * 6, 0, Math.PI*2); ctx.stroke();
       ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(c.x, c.y, c.radius + 16 + pulse * 4, 0, Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(c.x, cy, c.radius + 16 + pulse * 4, 0, Math.PI*2); ctx.stroke();
       ctx.restore();
     }
 
@@ -3109,7 +3128,7 @@ function render() {
       ctx.strokeStyle = isEnemy(game.player, c) ? '#f00' : '#0f0';
       ctx.lineWidth = 2;
       ctx.setLineDash([4,4]);
-      ctx.beginPath(); ctx.arc(c.x, c.y, c.radius + 6, 0, Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(c.x, cy, c.radius + 6, 0, Math.PI*2); ctx.stroke();
       ctx.setLineDash([]);
       ctx.restore();
     }
@@ -3119,7 +3138,7 @@ function render() {
       ctx.save();
       ctx.shadowColor = '#0ff'; ctx.shadowBlur = 14; ctx.globalAlpha = 0.5;
       ctx.strokeStyle = '#0ff'; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(c.x, c.y, c.radius + 3, 0, Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(c.x, cy, c.radius + 3, 0, Math.PI*2); ctx.stroke();
       ctx.restore();
     }
 
@@ -3128,40 +3147,40 @@ function render() {
       ctx.save();
       ctx.shadowColor = '#a0f'; ctx.shadowBlur = 10; ctx.globalAlpha = 0.4;
       ctx.strokeStyle = '#a0f'; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(c.x, c.y, c.radius + 2, 0, Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(c.x, cy, c.radius + 2, 0, Math.PI*2); ctx.stroke();
       ctx.restore();
     }
 
-    // Body — team base color (blue = ally, red = enemy)
+    // Body — team base color with strong visible ring
     const teamFill   = c.team === TEAM_ALLY ? '#18346a' : '#6a1c1c';
     const teamRing   = c.team === TEAM_ALLY ? '#5bcfff' : '#ff5555';
     const playerRing = '#ffe066';
     ctx.save();
     if (isPlayer) { ctx.shadowColor = '#ffe066'; ctx.shadowBlur = 22; }
-    else { ctx.shadowColor = c.color; ctx.shadowBlur = 6; }
+    else { ctx.shadowColor = teamRing; ctx.shadowBlur = 10; }
     ctx.fillStyle = teamFill;
-    ctx.beginPath(); ctx.arc(c.x, c.y, c.radius, 0, Math.PI*2); ctx.fill();
-    // Class-color tinted inner disc (more opaque for vivid class identity)
+    ctx.beginPath(); ctx.arc(c.x, cy, c.radius, 0, Math.PI*2); ctx.fill();
+    // Class-color tinted inner disc
     ctx.globalAlpha = 0.72;
     ctx.fillStyle = c.color;
-    ctx.beginPath(); ctx.arc(c.x, c.y, c.radius - 3, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(c.x, cy, c.radius - 3, 0, Math.PI*2); ctx.fill();
     ctx.globalAlpha = 1;
-    // Outer ring (team color, gold for player)
+    // Outer ring — thicker for team-color visibility
     ctx.strokeStyle = isPlayer ? playerRing : teamRing;
-    ctx.lineWidth   = isPlayer ? 3 : 2.5;
-    ctx.beginPath(); ctx.arc(c.x, c.y, c.radius, 0, Math.PI*2); ctx.stroke();
+    ctx.lineWidth   = isPlayer ? 4 : 3.5;
+    ctx.beginPath(); ctx.arc(c.x, cy, c.radius, 0, Math.PI*2); ctx.stroke();
     ctx.restore();
     // Class symbol (white icon drawn on top)
-    drawClassSymbol(ctx, c.x, c.y, c.radius, c.classKey);
+    drawClassSymbol(ctx, c.x, cy, c.radius, c.classKey);
 
     // Bar layout (used by cast bar, HP bar, energy bar)
     const barW = c.radius * 2 + 4, barH = 5;
-    const bx = c.x - barW/2, by = c.y - c.radius - 14;
+    const bx = c.x - barW/2, by = cy - c.radius - 14;
 
     // Knockdown indicator — flat ellipse beneath the character
     if (hasCond(c, 'knockdown')) {
       ctx.save();
-      ctx.translate(c.x, c.y + c.radius * 0.2);
+      ctx.translate(c.x, cy + c.radius * 0.2);
       ctx.scale(1.7, 0.38);
       ctx.beginPath();
       ctx.arc(0, 0, c.radius, 0, Math.PI * 2);
@@ -3173,22 +3192,25 @@ function render() {
       ctx.restore();
     }
 
-    // Cast bar (horizontal, above HP/energy bars)
+    // Cast bar — larger and glowing when this is the player's targeted enemy
     if (c.casting) {
       const prog = clamp(c.castTimer / c.casting.sk.cast, 0, 1);
-      const cbW = barW, cbH = 5;
-      const cbX = bx, cbY = by - 10;
+      const isTargetCasting = isSelected && game.player && isEnemy(game.player, c);
+      const cbH = isTargetCasting ? 8 : 5;
+      const cbW = barW + (isTargetCasting ? 4 : 0);
+      const cbX = c.x - cbW / 2, cbY = by - (isTargetCasting ? 13 : 10);
       ctx.save();
+      if (isTargetCasting) { ctx.shadowColor = '#ffa500'; ctx.shadowBlur = 8; }
       ctx.fillStyle = '#1a1505';
       ctx.fillRect(cbX, cbY, cbW, cbH);
       ctx.fillStyle = `rgba(255,165,0,${0.55 + 0.45 * prog})`;
       ctx.fillRect(cbX, cbY, cbW * prog, cbH);
-      ctx.strokeStyle = '#8a6400';
-      ctx.lineWidth = 0.5;
+      ctx.strokeStyle = isTargetCasting ? '#ffaa00' : '#8a6400';
+      ctx.lineWidth = isTargetCasting ? 1 : 0.5;
       ctx.strokeRect(cbX, cbY, cbW, cbH);
       const skLabel = (c.casting.sk.name || '').slice(0, 12);
       ctx.fillStyle = '#fff';
-      ctx.font = 'bold 5px sans-serif';
+      ctx.font = `bold ${isTargetCasting ? 6 : 5}px sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(skLabel, c.x, cbY + cbH / 2);
@@ -3213,14 +3235,14 @@ function render() {
       ctx.fillStyle = '#ff3333';
       ctx.font = 'bold 7px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(`DP −${c.dp * 15}%`, c.x, c.y - c.radius - 26);
+      ctx.fillText(`DP −${c.dp * 15}%`, c.x, cy - c.radius - 26);
       ctx.restore();
     }
     // Name — blue for allies, red for enemies, gold for player
     ctx.fillStyle = isPlayer ? '#ffe066' : (c.team === TEAM_ALLY ? '#7bcfff' : '#ff7777');
     ctx.font = `${isPlayer ? 'bold ' : ''}10px sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText(c.name, c.x, c.y - c.radius - 17);
+    ctx.fillText(c.name, c.x, cy - c.radius - 17);
 
     // Condition dots
     const conds = Object.keys(c.conditions);
@@ -3228,7 +3250,7 @@ function render() {
       const def = COND[conds[i]];
       if (!def) continue;
       ctx.fillStyle = def.color;
-      ctx.beginPath(); ctx.arc(c.x - (conds.length-1)*5 + i*10, c.y + c.radius + 6, 4, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(c.x - (conds.length-1)*5 + i*10, cy + c.radius + 6, 4, 0, Math.PI*2); ctx.fill();
     }
   }
 
@@ -3364,7 +3386,7 @@ function updateUI() {
     const condDots = Object.keys(c.conditions).map(n => {
       const def = COND[n]; return def ? `<div class="mini-cond" title="${def.label}" style="background:${def.color}"></div>` : '';
     }).join('');
-    row.innerHTML = `<div class="party-name" style="color:${c.alive ? '#bbb' : '#555'}">${c.alive ? '' : '☠ '}${c.name}</div>
+    row.innerHTML = `<div class="party-name" style="color:${c.alive ? '#bbb' : '#555'}">${c.alive ? '' : '☠ '}${CLASS_ICON[c.classKey] || ''} ${c.name}</div>
       <div class="bar-row">
         <div class="mini-bar"><div class="mini-bar-fill" style="width:${hpP}%;background:${hpP>50?'#4a4':hpP>25?'#aa4':'#a44'}"></div></div>
         <div class="mini-bar"><div class="mini-bar-fill" style="width:${enP}%;background:#44b"></div></div>
@@ -3494,6 +3516,7 @@ function startGame() {
   // Reset state
   document.getElementById('log-entries').innerHTML = '';
   game.chars = []; game.effects = []; game.projectiles = []; game.aoeZones = [];
+  _bgCamX = NaN; _bgCamY = NaN; // force bg-canvas rebuild on new map
   game.floatingTexts = [];
   game.over = false; game.running = false; game.logLines = [];
   game.flagStand = null;

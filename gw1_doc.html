@@ -866,19 +866,19 @@ footer {
       <div class="card" style="border-left:3px solid #4af">
         <strong style="color:#4af">Équipe Alliée — Bleu</strong>
         <ul style="margin-top:8px; font-size:0.88em">
-          <li>Cercle du personnage : couleur de classe avec bordure <strong style="color:#4af">bleue</strong></li>
+          <li>Cercle du personnage : couleur de classe avec <strong style="color:#5bcfff">bordure bleue épaisse (3.5 px)</strong> + lueur bleue</li>
           <li>Barres PV en vert/rouge selon niveau</li>
-          <li>Chiffres de dégâts reçus en <span style="color:#f88">rouge clair</span></li>
+          <li>Chiffres de dégâts reçus : <span style="color:#ddd">blancs (physique)</span>, <span style="color:#6af">bleus (sorts)</span>, <span style="color:#f80">oranges (conditions)</span>, <span style="color:#ff4">jaunes grands (critiques)</span></li>
           <li>Chiffres de soins en <span style="color:#5efa8a">vert vif</span></li>
         </ul>
       </div>
       <div class="card" style="border-left:3px solid #f44">
         <strong style="color:#f44">Équipe Ennemie — Rouge</strong>
         <ul style="margin-top:8px; font-size:0.88em">
-          <li>Cercle du personnage : couleur de classe avec bordure <strong style="color:#f44">rouge</strong></li>
+          <li>Cercle du personnage : couleur de classe avec <strong style="color:#ff5555">bordure rouge épaisse (3.5 px)</strong> + lueur rouge</li>
           <li>Barres PV en rouge</li>
-          <li>Chiffres de dégâts reçus en <span style="color:#faa">rose</span></li>
-          <li>Anneau de sélection en rouge pointillé quand ciblé</li>
+          <li>Anneau de sélection pointillé rouge quand ciblé</li>
+          <li>Barre de cast agrandie (8 px) + lueur dorée quand l'ennemi ciblé incante</li>
         </ul>
       </div>
     </div>
@@ -912,8 +912,9 @@ footer {
     </table></div>
 
     <div class="subsection-title">Style visuel</div>
-    <p>Thème <strong>dark fantasy RPG</strong> : interface aux tons brun-ambre chaud, bordures dorées, titre avec lueur dorée. Les personnages utilisent une couleur de classe plus vive (opacité 0.72) sur un fond d'équipe cobalt (alliés) ou cramoisi (ennemis), avec une légère lueur de la couleur de classe. Les barres PV/énergie sur le canvas utilisent les mêmes tons (vert vif → jaune → rouge, bleu profond).</p>
-    <p>Les fonds de map sont prégénérés une seule fois sur un <strong>canvas offscreen</strong> (seeded RNG → reproductible) et mis en cache. Chaque frame se réduit à un unique <code>drawImage()</code> pour les éléments statiques. Les ellipses (ombres d'arbres, buissons, pierres) sont dessinées via une fonction <code>drawEllipse()</code> paramétrique (<code>moveTo</code>/<code>lineTo</code>) compatible avec tous les navigateurs — la méthode native <code>ctx.ellipse()</code> n'est pas utilisée pour éviter les crashs sur certains environnements.</p>
+    <p>Thème <strong>dark fantasy RPG</strong> : interface aux tons brun-ambre chaud, bordures dorées, titre avec lueur dorée. Les personnages utilisent une couleur de classe plus vive (opacité 0.72) sur un fond d'équipe cobalt (alliés) ou cramoisi (ennemis), avec une lueur de la couleur d'équipe (bleu/rouge) en ombre portée du canvas. Les barres PV/énergie sur le canvas utilisent les mêmes tons (vert vif → jaune → rouge, bleu profond).</p>
+    <p><strong>Animation de marche</strong> : chaque personnage se déplace avec une légère oscillation verticale sinusoïdale (<code>sin(t × 0.009 + x × 0.04) × 2.2px</code>) quand <code>isMoving</code> est vrai. La phase est décalée par la position X pour éviter la synchronisation entre les personnages.</p>
+    <p><strong>Dirty rendering (optimisation)</strong> : le canvas de jeu est splitté en deux couches. Un <code>&lt;canvas id="bg-canvas"&gt;</code> en CSS arrière-plan contient le fond de map et n'est redessiné que lorsque la caméra se déplace (<code>CAM.x/y</code> change). Le canvas principal (<code>arena</code>) ne fait qu'un <code>clearRect</code> transparent chaque frame et dessine uniquement les éléments dynamiques (personnages, effets, projectiles). Les fonds de map sont prégénérés une seule fois sur un canvas offscreen (seeded RNG → reproductible). Les ellipses sont dessinées via une fonction <code>drawEllipse()</code> paramétrique compatible avec tous les navigateurs.</p>
 
     <div class="subsection-title">Effets visuels en jeu</div>
     <ul>
@@ -922,7 +923,7 @@ footer {
       <li><strong>Effets d'impact</strong> — cercles qui s'expandent et s'estompent à l'impact ou au cast</li>
       <li><strong>Zones AoE</strong> — cercles semi-transparents colorés (feu = orange, glace = bleu clair, esprits = rouge/cyan)</li>
       <li><strong>Points de condition</strong> — petits cercles colorés sous les personnages indiquant les conditions actives</li>
-      <li><strong>Barre de cast</strong> — barre horizontale orangée au-dessus des barres PV/énergie, affichée sur <em>tous</em> les personnages en train d'incanter (alliés comme ennemis) ; le nom du skill est inscrit à l'intérieur</li>
+      <li><strong>Barre de cast</strong> — barre horizontale orangée au-dessus des barres PV/énergie, affichée sur <em>tous</em> les personnages en train d'incanter ; le nom du skill est inscrit à l'intérieur. <strong>Si l'ennemi ciblé incante</strong>, sa barre de cast est agrandie (8 px au lieu de 5 px) et entourée d'une lueur dorée pour faciliter l'interruption.</li>
       <li><strong>Barre PV</strong> — verte→jaune→rouge au-dessus de chaque personnage vivant</li>
       <li><strong>Knockdown</strong> — ellipse aplatie dorée dessinée sous le personnage renversé (via transformation ctx.scale)</li>
       <li><strong>Corps</strong> — cercle gris semi-transparent avec timer de respawn au-dessus</li>
@@ -933,9 +934,9 @@ footer {
       <div class="card">
         <strong>Panel droit</strong>
         <ul style="margin-top:8px; font-size:0.88em">
-          <li><strong>Équipe</strong> : barre PV + barre énergie + points de condition pour chaque allié IA</li>
+          <li><strong>Équipe</strong> : icône de classe + barre PV + barre énergie + points de condition pour chaque allié IA (⚔ Guerrier, ✚ Moine, ◆ Élémentaliste…)</li>
           <li><strong>Cible</strong> : nom, barre PV, conditions de la cible sélectionnée</li>
-          <li><strong>Log de combat</strong> : messages colorés en temps réel (rouge=dégâts, vert=soins, violet=maléfices, orange=conditions)</li>
+          <li><strong>Log de combat</strong> : messages colorés en temps réel (rouge=dégâts, vert=soins, violet=maléfices, orange=conditions) + <strong>bordure colorée par équipe</strong> : bordure gauche bleue pour les messages concernant les alliés, rouge pour les ennemis</li>
         </ul>
       </div>
       <div class="card">
