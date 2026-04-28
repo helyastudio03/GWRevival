@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Guild Wars PvP Prototype</title>
+<title>Guild Wars</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -11,7 +11,7 @@ body {
   font-family: 'Segoe UI', Georgia, serif;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   min-height: 100vh;
   padding: 6px 10px;
   user-select: none;
@@ -58,7 +58,7 @@ canvas#arena { border: 2px solid #8a6428; cursor: crosshair; display: block; box
   padding: 6px 20px; font-size: 14px; cursor: pointer; border-radius: 4px; margin-top: 4px;
 }
 
-#right-panel { width: 200px; display: flex; flex-direction: column; gap: 6px; }
+#right-panel { width: 260px; display: flex; flex-direction: column; gap: 6px; }
 
 #team-panel { background: rgba(14,9,4,0.9); border: 1px solid #6a4818; padding: 6px; border-radius: 3px; }
 .section-title { font-size: 10px; color: #8a6a30; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
@@ -71,7 +71,7 @@ canvas#arena { border: 2px solid #8a6428; cursor: crosshair; display: block; box
 .mini-cond { width: 7px; height: 7px; border-radius: 50%; }
 
 #morale-panel { background: rgba(14,9,4,0.9); border: 1px solid #6a4818; padding: 6px; border-radius: 3px; }
-#morale-death-row { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
+#morale-death-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px; }
 .death-bar { display: flex; gap: 2px; }
 .death-pip { width: 13px; height: 7px; border-radius: 1px; }
 .morale-bar-wrap { margin-bottom: 3px; display: flex; align-items: center; gap: 4px; }
@@ -79,7 +79,11 @@ canvas#arena { border: 2px solid #8a6428; cursor: crosshair; display: block; box
 .morale-bar-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
 .morale-label { font-size: 9px; white-space: nowrap; }
 #combat-log { background: rgba(14,9,4,0.9); border: 1px solid #6a4818; padding: 6px; border-radius: 3px; flex: 1; overflow: hidden; }
-#log-entries { height: 240px; overflow-y: auto; font-size: 10px; line-height: 1.45; }
+#log-entries { height: 240px; overflow-y: auto; font-size: 10px; line-height: 1.45; scrollbar-width: thin; scrollbar-color: #6a4818 #0e0904; }
+#log-entries::-webkit-scrollbar { width: 5px; }
+#log-entries::-webkit-scrollbar-track { background: #0e0904; border-radius: 3px; }
+#log-entries::-webkit-scrollbar-thumb { background: #6a4818; border-radius: 3px; }
+#log-entries::-webkit-scrollbar-thumb:hover { background: #9a6828; }
 .log-dmg  { color: #f88; }
 .log-heal { color: #8f8; }
 .log-cond { color: #fa8; }
@@ -167,7 +171,7 @@ canvas#arena { border: 2px solid #8a6428; cursor: crosshair; display: block; box
 </style>
 </head>
 <body>
-<h1>⚔ Guild Wars — PvP Prototype ⚔</h1>
+<h1>⚔ Guild Wars ⚔</h1>
 
 <div id="class-select">
   <label>Classe :</label>
@@ -234,12 +238,12 @@ canvas#arena { border: 2px solid #8a6428; cursor: crosshair; display: block; box
     <div id="morale-panel">
       <div class="section-title">Statistiques</div>
       <div id="morale-death-row">
-        <div>
-          <div style="font-size:9px;color:#f88;margin-bottom:2px">Alliés</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="font-size:9px;color:#f88;min-width:44px">Alliés</div>
           <div class="death-bar" id="death-bar-ally"></div>
         </div>
-        <div>
-          <div style="font-size:9px;color:#faa;margin-bottom:2px">Ennemis</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="font-size:9px;color:#faa;min-width:44px">Ennemis</div>
           <div class="death-bar" id="death-bar-enemy"></div>
         </div>
       </div>
@@ -291,7 +295,7 @@ canvas#arena { border: 2px solid #8a6428; cursor: crosshair; display: block; box
     <div id="tt-desc"></div>
     <div id="tt-stats"></div>
   </div>
-  <div id="hint">ZQSD/WASD : Déplacer &nbsp;|&nbsp; Clic / Tab : Cibler ennemi &nbsp;|&nbsp; Ctrl+1–8 : Cibler allié &nbsp;|&nbsp; 1–8 : Compétences &nbsp;|&nbsp; Espace : Auto-attaque (déplacement auto) &nbsp;|&nbsp; Compétence pendant cast → mise en file</div>
+  <div id="hint">ZQSD/WASD : Déplacer &nbsp;|&nbsp; Clic / Tab : Cibler ennemi &nbsp;|&nbsp; * : Ennemi le + proche &nbsp;|&nbsp; Ctrl+1–8 : Cibler allié &nbsp;|&nbsp; 1–8 : Compétences &nbsp;|&nbsp; Espace : Auto-attaque (déplacement auto) &nbsp;|&nbsp; Compétence pendant cast → mise en file</div>
 </div>
 
 <script>
@@ -685,7 +689,7 @@ function killChar(c, g, msg, killer) {
   if (!c.alive) return;
   c.alive = false; c.hp = 0;
   c.conditions = {}; c.enchantments = {}; c.hexes = {}; c.casting = null;
-  c.queuedSkill = null;
+  c.queuedSkill = null; c.pendingSkillIdx = null;
   c.rezTimer = REZ_TIME;
   // Death Penalty: −15% max HP per death, stacks up to −60%
   c.dp = Math.min(4, (c.dp || 0) + 1);
@@ -710,7 +714,7 @@ function respawnChar(c, g) {
   c.hp = c.maxHp; c.energy = Math.floor(c.maxEnergy * 0.5);
   c.conditions = {}; c.enchantments = {}; c.hexes = {};
   c.x = c.spawnX + rnd(-30, 30); c.y = c.spawnY + rnd(-30, 30);
-  c.rezTimer = 0; c.casting = null; c.castTimer = 0; c.queuedSkill = null;
+  c.rezTimer = 0; c.casting = null; c.castTimer = 0; c.queuedSkill = null; c.pendingSkillIdx = null;
   c.target = null; c.autoAttack = false; c.attackTimer = 0;
   c.pathPoints = []; c.pathDest = null; c.pathTimer = 0;
   const dpNote = c.dp > 0 ? ` (DP −${c.dp * 15}%)` : '';
@@ -1786,7 +1790,7 @@ function makeChar(build, team, x, y, isPlayer) {
     alive: true, isMoving: false,
     moveTarget: null, target: null,
     autoAttack: false, attackTimer: 0,
-    casting: null, castTimer: 0, queuedSkill: null,
+    casting: null, castTimer: 0, queuedSkill: null, pendingSkillIdx: null,
     skillCooldowns: new Array(8).fill(0),
     usedOneUse: new Array(8).fill(false),
     aiTimer: 0, rezTimer: 0,
@@ -1845,6 +1849,13 @@ document.addEventListener('keydown', e => {
   if (idx >= 0) { e.preventDefault(); useSkill(p, idx); return; }
   // Tab / Shift+Tab: cycle enemy targets (no auto-attack start)
   if (e.code === 'Tab') { e.preventDefault(); cycleTarget(p, e.shiftKey ? -1 : 1); return; }
+  // * : target nearest enemy
+  if (e.code === 'NumpadMultiply' || e.key === '*') {
+    e.preventDefault();
+    const enemies = getEnemies(p, game).filter(c => c.alive);
+    if (enemies.length) { enemies.sort((a, b) => dist(p, a) - dist(p, b)); p.target = enemies[0]; }
+    return;
+  }
   // Space: toggle auto-attack
   if (e.code === 'Space') { e.preventDefault(); p.autoAttack = !p.autoAttack; return; }
 });
@@ -1866,6 +1877,7 @@ document.getElementById('arena').addEventListener('click', e => {
     // Don't auto-enable auto-attack or auto-move on click; player controls that via Space
   } else {
     game.player.moveTarget = { x: mx, y: my };
+    game.player.pathPoints = []; game.player.pathDest = null;
   }
 });
 
@@ -1904,7 +1916,16 @@ function useSkill(char, idx) {
     // For instant melee attacks, verify the target is in range before consuming energy/CD
     if (!sk.isToggle && sk.range && sk.range <= 160) {
       const tgt = char.target;
-      if (!tgt || !tgt.alive || dist(char, tgt) > sk.range + 20) return;
+      if (!tgt || !tgt.alive) return;
+      if (dist(char, tgt) > sk.range + 20) {
+        // Move toward target and queue the skill for when in range
+        if (char.isPlayer) {
+          char.moveTarget = { x: tgt.x, y: tgt.y };
+          char.pathPoints = []; char.pathDest = null;
+          char.pendingSkillIdx = idx;
+        }
+        return;
+      }
     }
     char.energy -= sk.cost;
     sk.use(char, char.target, game);
@@ -1957,13 +1978,39 @@ function moveChar(c, dt) {
     if (dx !== 0 || dy !== 0) {
       const len = Math.hypot(dx, dy);
       dx /= len; dy /= len;
+      // Steer around walls when pressing into them
+      const steered = steerDir(c, dx, dy);
+      dx = steered.dx; dy = steered.dy;
       c.isMoving = true;
-      c.moveTarget = null;
+      c.moveTarget = null; c.pathPoints = []; c.pathDest = null;
     } else if (c.moveTarget) {
       const mdx = c.moveTarget.x - c.x, mdy = c.moveTarget.y - c.y;
-      const d = Math.hypot(mdx, mdy);
-      if (d < 4) { c.moveTarget = null; c.isMoving = false; }
-      else { dx = mdx / d; dy = mdy / d; c.isMoving = true; }
+      const dd = Math.hypot(mdx, mdy);
+      if (dd < 4) { c.moveTarget = null; c.pathPoints = []; c.isMoving = false; }
+      else {
+        // A* pathfinding for mouse-click movement
+        c.pathTimer = Math.max(0, c.pathTimer - dt);
+        const pd = c.pathDest ? Math.hypot(c.moveTarget.x - c.pathDest.x, c.moveTarget.y - c.pathDest.y) : Infinity;
+        if ((pd > GRID_CELL * 1.5 || !c.pathPoints.length) && c.pathTimer <= 0 && game.map) {
+          c.pathDest = { x: c.moveTarget.x, y: c.moveTarget.y };
+          const path = astar(game.map, c.x, c.y, c.moveTarget.x, c.moveTarget.y);
+          c.pathPoints = path || [];
+          c.pathTimer = path ? 0.2 : 0.05;
+        }
+        let wx = c.moveTarget.x, wy = c.moveTarget.y;
+        const onPath = c.pathPoints.length > 0;
+        if (onPath) {
+          wx = c.pathPoints[0].x; wy = c.pathPoints[0].y;
+          if (Math.hypot(wx - c.x, wy - c.y) < GRID_CELL * 0.65) c.pathPoints.shift();
+        }
+        const pl = Math.hypot(wx - c.x, wy - c.y);
+        if (pl < 2) { c.isMoving = false; }
+        else {
+          let fdx = (wx - c.x) / pl, fdy = (wy - c.y) / pl;
+          if (!onPath) { const s = steerDir(c, fdx, fdy); fdx = s.dx; fdy = s.dy; }
+          dx = fdx; dy = fdy; c.isMoving = true;
+        }
+      }
     } else {
       c.isMoving = false;
     }
@@ -2340,6 +2387,24 @@ function update(dt) {
       else if (c.castTimer >= c.casting.sk.cast) finishCast(c);
     }
 
+    // Execute pending skill once in range (player approached target)
+    if (c.pendingSkillIdx !== null && !c.casting) {
+      const pIdx = c.pendingSkillIdx;
+      const pSkId = c.skills[pIdx];
+      const pSk = SK[pSkId];
+      if (pSk && c.target && c.target.alive && c.skillCooldowns[pIdx] <= 0 && c.energy >= pSk.cost) {
+        if (!pSk.range || dist(c, c.target) <= pSk.range + 20) {
+          c.pendingSkillIdx = null;
+          c.moveTarget = null;
+          useSkill(c, pIdx);
+        } else {
+          c.moveTarget = { x: c.target.x, y: c.target.y };
+        }
+      } else {
+        c.pendingSkillIdx = null;
+      }
+    }
+
     // Auto-attack tick
     if (c.autoAttack && !c.casting) {
       let atkSpd = c.attackSpeed;
@@ -2355,9 +2420,10 @@ function update(dt) {
             c.attackTimer = 0;
             SK.w_auto.use(c, tgt, game);
           }
-        } else if (!c.isPlayer) {
-          // AI characters chase the target
-          c.moveTarget = { x: tgt.x, y: tgt.y };
+        } else {
+          // Chase target (AI and player, unless player is steering with WASD)
+          const pWasd = c.isPlayer && (keys['KeyW']||keys['ArrowUp']||keys['KeyZ']||keys['KeyS']||keys['ArrowDown']||keys['KeyA']||keys['ArrowLeft']||keys['KeyQ']||keys['KeyD']||keys['ArrowRight']);
+          if (!pWasd) c.moveTarget = { x: tgt.x, y: tgt.y };
           if (c.attackTimer >= interval) c.attackTimer = 0;
         }
       }
