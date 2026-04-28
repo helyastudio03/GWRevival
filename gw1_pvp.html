@@ -270,6 +270,9 @@ canvas#arena { border: 2px solid #8a6428; cursor: crosshair; display: block; box
 // ── CONSTANTES ──────────────────────────────────────────────────
 const AW = 700, AH = 500;           // viewport (canvas)
 const WORLD_W = 1400, WORLD_H = 800; // monde
+const GRID_CELL = 20;
+const GRID_W = Math.ceil(WORLD_W / GRID_CELL); // 70
+const GRID_H = Math.ceil(WORLD_H / GRID_CELL); // 40
 
 function seededRng(seed) {
   let s = seed >>> 0;
@@ -521,12 +524,25 @@ function getTeam(game, team)   { return game.chars.filter(c => c.team === team &
 function getEnemies(c, game)   { return getTeam(game, c.team === TEAM_ALLY ? TEAM_ENEMY : TEAM_ALLY); }
 function getAllies(c, game)     { return game.chars.filter(x => x.team === c.team && x !== c && x.alive); }
 
+function interruptCast(target, attacker, g) {
+  if (!target.casting) return false;
+  if (target.casting.sk.cast <= 0.5) return false; // fast casts not interrupted
+  g.log(`⚡ ${attacker.name} interrompt ${target.name} !`, 'log-hex');
+  target.casting = null; target.castTimer = 0;
+  spawnFx(g, target.x, target.y, '#ff4', 40, 0.35);
+  return true;
+}
+
 function addCond(target, name, duration, game) {
   if (!target.alive) return;
   const prev = target.conditions[name];
   target.conditions[name] = { duration: prev ? Math.max(prev.duration, duration) : duration };
   const lbl = COND[name]?.label || name;
   if (!prev) game.log(`${target.name} → ${lbl}`, 'log-cond');
+  // Knockdown silently clears any active cast (skills log their own interrupt message)
+  if (name === 'knockdown' && target.casting && target.casting.sk.cast > 0.5) {
+    target.casting = null; target.castTimer = 0;
+  }
 }
 
 function addEnch(target, name, duration, game) {
@@ -642,6 +658,7 @@ function respawnChar(c, g) {
   c.x = c.spawnX + rnd(-30, 30); c.y = c.spawnY + rnd(-30, 30);
   c.rezTimer = 0; c.casting = null; c.castTimer = 0;
   c.target = null; c.autoAttack = false; c.attackTimer = 0;
+  c.pathPoints = []; c.pathDest = null; c.pathTimer = 0;
   g.log(`✦ ${c.name} réapparaît au shrine !`, 'log-heal');
   spawnFx(g, c.x, c.y, '#0ff', 80, 1.0);
   addFloat(g, c.x, c.y, 'RESPAWN', '#0ff', 14);
@@ -704,7 +721,7 @@ const SK = {
       if (hasCond(me,'blind') && Math.random() < 0.9) return;
       let dmg = calcPhysDmg(me, tgt, me.minDmg+8, me.maxDmg+12);
       dealDmg(me, tgt, dmg, 'physique', g);
-      if (tgt.isMoving) { addCond(tgt, 'knockdown', 2, g); g.log(`${tgt.name} est renversé !`, 'log-cond'); }
+      if (tgt.isMoving) { interruptCast(tgt, me.name, g); addCond(tgt, 'knockdown', 2, g); }
       if (hasHex(me,'empathy')) dealDmg(me, me, 20, 'maléfice', g);
     }
   },
@@ -726,8 +743,8 @@ const SK = {
     desc:'Renverse + interrompt (sort)',
     use(me, tgt, g) {
       if (!tgt || !isEnemy(me,tgt) || dist(me,tgt) > 160) return;
+      interruptCast(tgt, me.name, g);
       addCond(tgt, 'knockdown', 2, g);
-      if (tgt.casting) { tgt.casting = null; tgt.castTimer = 0; g.log(`${me.name} interrompt ${tgt.name} !`, 'log-hex'); }
       if (hasHex(me,'spiteful_spirit')) dealDmg(me, me, 30, 'maléfice', g);
       spawnFx(g, tgt.x, tgt.y, '#fc0', 60, 0.4);
     }
@@ -1043,8 +1060,8 @@ const SK = {
       if (hasCond(me,'blind') && Math.random()<0.9) { g.log(`${me.name} rate (Cécité)!`,'log-sys'); return; }
       const d = calcPhysDmg(me, tgt, 28, 40);
       dealDmg(me, tgt, d, 'physique', g);
+      interruptCast(tgt, me.name, g);
       addCond(tgt,'knockdown',2,g); addCond(tgt,'weakness',5,g);
-      if (tgt.casting) { tgt.casting=null; tgt.castTimer=0; g.log(`${me.name} interrompt ${tgt.name}!`,'log-sys'); }
       spawnFx(g, tgt.x, tgt.y,'#fc0',70,0.5);
     }
   },
@@ -1671,6 +1688,7 @@ function makeChar(build, team, x, y, isPlayer) {
     usedOneUse: new Array(8).fill(false),
     aiTimer: 0, rezTimer: 0,
     velocity: 0,
+    pathPoints: [], pathDest: null, pathTimer: 0,
     stats: { dmgDealt: 0, dmgReceived: 0, healsGiven: 0, kills: 0, deaths: 0 },
   };
 }
@@ -1681,6 +1699,7 @@ const game = {
   effects: [], projectiles: [], aoeZones: [],
   floatingTexts: [],
   map: null, flagStand: null,
+  spike: null, spikeCooldown: 8,
   running: false, over: false,
   deathCount: { 0: 0, 1: 0 },
   logLines: [],
@@ -1708,8 +1727,8 @@ document.addEventListener('keydown', e => {
   // skills 1-8
   const idx = ['Digit1','Digit2','Digit3','Digit4','Digit5','Digit6','Digit7','Digit8'].indexOf(e.code);
   if (idx >= 0) { e.preventDefault(); useSkill(p, idx); return; }
-  // Tab: cycle targets
-  if (e.code === 'Tab') { e.preventDefault(); cycleTarget(p); return; }
+  // Tab / Shift+Tab: cycle targets
+  if (e.code === 'Tab') { e.preventDefault(); cycleTarget(p, e.shiftKey ? -1 : 1); return; }
   // Space: toggle auto-attack
   if (e.code === 'Space') { e.preventDefault(); p.autoAttack = !p.autoAttack; return; }
 });
@@ -1734,11 +1753,15 @@ document.getElementById('arena').addEventListener('click', e => {
   }
 });
 
-function cycleTarget(p) {
-  const enemies = getEnemies(p, game);
+function cycleTarget(p, dir = 1) {
+  const enemies = getEnemies(p, game).slice().sort((a, b) => dist(p, a) - dist(p, b));
   if (!enemies.length) return;
   const cur = enemies.indexOf(p.target);
-  p.target = enemies[(cur + 1) % enemies.length];
+  const next = cur < 0
+    ? (dir > 0 ? 0 : enemies.length - 1)
+    : (cur + dir + enemies.length) % enemies.length;
+  p.target = enemies[next];
+  p.autoAttack = true;
 }
 
 // ── USE SKILL ────────────────────────────────────────────────────
@@ -1815,11 +1838,26 @@ function moveChar(c, dt) {
     }
   } else if (c.moveTarget) {
     const mdx = c.moveTarget.x - c.x, mdy = c.moveTarget.y - c.y;
-    const d = Math.hypot(mdx, mdy);
-    if (d < 4) { c.moveTarget = null; c.isMoving = false; }
+    const dd = Math.hypot(mdx, mdy);
+    if (dd < 4) { c.moveTarget = null; c.pathPoints = []; c.isMoving = false; }
     else {
-      const dir = steerDir(c, mdx / d, mdy / d);
-      dx = dir.dx; dy = dir.dy; c.isMoving = true;
+      // Recompute A* path when destination moved significantly or path is empty
+      c.pathTimer = Math.max(0, c.pathTimer - 0.016);
+      const pd = c.pathDest ? Math.hypot(c.moveTarget.x - c.pathDest.x, c.moveTarget.y - c.pathDest.y) : Infinity;
+      if ((pd > GRID_CELL * 1.5 || !c.pathPoints.length) && c.pathTimer <= 0 && game.map) {
+        c.pathDest = { x: c.moveTarget.x, y: c.moveTarget.y };
+        c.pathPoints = astar(game.map, c.x, c.y, c.moveTarget.x, c.moveTarget.y) || [];
+        c.pathTimer = 0.18 + Math.random() * 0.07; // stagger between characters
+      }
+      // Follow next waypoint (or go direct if no path found)
+      let wx = c.moveTarget.x, wy = c.moveTarget.y;
+      if (c.pathPoints.length) {
+        wx = c.pathPoints[0].x; wy = c.pathPoints[0].y;
+        if (Math.hypot(wx - c.x, wy - c.y) < GRID_CELL * 0.65) c.pathPoints.shift();
+      }
+      const pl = Math.hypot(wx - c.x, wy - c.y);
+      if (pl < 2) { c.isMoving = false; }
+      else { dx = (wx - c.x) / pl; dy = (wy - c.y) / pl; c.isMoving = true; }
     }
   } else {
     c.isMoving = false;
@@ -1978,6 +2016,8 @@ function aiUpdate(c, dt, g) {
   // prefer the player
   const playerEnemy = enemies.find(e => e.isPlayer);
   if (playerEnemy && playerEnemy.hp / playerEnemy.maxHp > 0.2) tgt = playerEnemy;
+  // spike coordonné : les damage dealers focusent la cible désignée
+  if (g.spike && g.spike.target && g.spike.target.alive && !c.healBonus) tgt = g.spike.target;
   c.target = tgt;
 
   const d = dist(c, tgt);
@@ -2025,6 +2065,29 @@ function tryAiSkill(c, skId, g) {
     if (sk.oneUse) c.usedOneUse[idx] = true;
   }
   return true;
+}
+
+// ── SPIKE COORDINATOR ────────────────────────────────────────────
+function spikeCoordinator(dt, g) {
+  g.spikeCooldown -= dt;
+  if (g.spike) {
+    g.spike.timer -= dt;
+    if (g.spike.timer <= 0 || !g.spike.target.alive) g.spike = null;
+    return;
+  }
+  if (g.spikeCooldown > 0) return;
+  const dmgDealers = g.chars.filter(c => c.team === TEAM_ENEMY && c.alive && !c.healBonus);
+  if (dmgDealers.length < 2) return;
+  const targets = g.chars.filter(c => c.team === TEAM_ALLY && c.alive);
+  if (!targets.length) return;
+  const healers = targets.filter(t => t.healBonus);
+  const tgt = healers.length
+    ? healers[Math.floor(Math.random() * healers.length)]
+    : targets.reduce((a, b) => a.hp < b.hp ? a : b);
+  g.spike = { target: tgt, timer: 4 };
+  g.spikeCooldown = 12 + Math.random() * 6;
+  g.log(`⚡ Spike sur ${tgt.name} !`, 'log-dmg');
+  addFloat(g, tgt.x, tgt.y - 40, '⚡ SPIKE !', '#ff4400', 16);
 }
 
 // ── UPDATE ────────────────────────────────────────────────────────
@@ -2194,6 +2257,9 @@ function update(dt) {
     ft.alpha = Math.max(0, 1 - ft.timer / ft.duration);
   }
   game.floatingTexts = game.floatingTexts.filter(ft => ft.timer < ft.duration);
+
+  // Spike coordonné (IA ennemie)
+  spikeCoordinator(dt, game);
 
   // Flag Stand update
   if (game.flagStand) updateFlagStand(dt);
@@ -2442,6 +2508,78 @@ function drawClassSymbol(ctx, x, y, r, classKey) {
   ctx.restore();
 }
 
+// ── NAVIGATION GRID & A* ─────────────────────────────────────────
+function buildNavGrid(map) {
+  if (map.navGrid) return;
+  const g = new Uint8Array(GRID_W * GRID_H);
+  for (const w of (map.walls || [])) {
+    const x0 = Math.max(0, Math.floor(w.x / GRID_CELL) - 1);
+    const y0 = Math.max(0, Math.floor(w.y / GRID_CELL) - 1);
+    const x1 = Math.min(GRID_W, Math.ceil((w.x + w.w) / GRID_CELL) + 1);
+    const y1 = Math.min(GRID_H, Math.ceil((w.y + w.h) / GRID_CELL) + 1);
+    for (let gy = y0; gy < y1; gy++)
+      for (let gx = x0; gx < x1; gx++)
+        g[gy * GRID_W + gx] = 1;
+  }
+  map.navGrid = g;
+}
+
+function astar(map, sx, sy, tx, ty) {
+  if (!map.navGrid) return null;
+  const nav = map.navGrid;
+  const gsx = clamp(Math.floor(sx / GRID_CELL), 0, GRID_W - 1);
+  const gsy = clamp(Math.floor(sy / GRID_CELL), 0, GRID_H - 1);
+  const gtx = clamp(Math.floor(tx / GRID_CELL), 0, GRID_W - 1);
+  const gty = clamp(Math.floor(ty / GRID_CELL), 0, GRID_H - 1);
+  if (gsx === gtx && gsy === gty) return [];
+
+  const gScore = new Float32Array(GRID_W * GRID_H).fill(1e9);
+  const fScore = new Float32Array(GRID_W * GRID_H).fill(1e9);
+  const parent = new Int32Array(GRID_W * GRID_H).fill(-1);
+  const inOpen = new Uint8Array(GRID_W * GRID_H);
+  const closed = new Uint8Array(GRID_W * GRID_H);
+
+  const sk = gsy * GRID_W + gsx;
+  const ek = gty * GRID_W + gtx;
+  gScore[sk] = 0;
+  fScore[sk] = Math.abs(gsx - gtx) + Math.abs(gsy - gty);
+  inOpen[sk] = 1;
+  const open = [sk];
+
+  const DX = [-1,1,0,0,-1,1,-1,1];
+  const DY = [0,0,-1,1,-1,-1,1,1];
+  const DC = [1,1,1,1,1.414,1.414,1.414,1.414];
+
+  let found = -1;
+  for (let iter = 0; iter < 500 && open.length; iter++) {
+    let mi = 0;
+    for (let i = 1; i < open.length; i++) if (fScore[open[i]] < fScore[open[mi]]) mi = i;
+    const ck = open[mi]; open.splice(mi, 1); inOpen[ck] = 0;
+    if (ck === ek) { found = ck; break; }
+    closed[ck] = 1;
+    const cx = ck % GRID_W, cy = (ck / GRID_W) | 0;
+    for (let d = 0; d < 8; d++) {
+      const nx = cx + DX[d], ny = cy + DY[d];
+      if (nx < 0 || nx >= GRID_W || ny < 0 || ny >= GRID_H) continue;
+      const nk = ny * GRID_W + nx;
+      if (nav[nk] || closed[nk]) continue;
+      const ng = gScore[ck] + DC[d];
+      if (ng < gScore[nk]) {
+        gScore[nk] = ng;
+        fScore[nk] = ng + Math.abs(nx - gtx) + Math.abs(ny - gty);
+        parent[nk] = ck;
+        if (!inOpen[nk]) { open.push(nk); inOpen[nk] = 1; }
+      }
+    }
+  }
+  if (found < 0) return null;
+
+  const path = [];
+  for (let n = found; parent[n] >= 0; n = parent[n])
+    path.unshift({ x: (n % GRID_W + 0.5) * GRID_CELL, y: ((n / GRID_W | 0) + 0.5) * GRID_CELL });
+  return path.length ? path : null;
+}
+
 function drawEllipse(ctx, cx, cy, rx, ry, rot) {
   const cos = rot ? Math.cos(rot) : 1;
   const sin = rot ? Math.sin(rot) : 0;
@@ -2683,6 +2821,18 @@ function render() {
 
     const isSelected = game.player && game.player.target === c;
     const isPlayer   = c.isPlayer;
+
+    // Spike indicator — pulsing red rings
+    if (game.spike && game.spike.target === c) {
+      const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 120);
+      ctx.save();
+      ctx.strokeStyle = `rgba(255,60,0,${0.55 + pulse * 0.45})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(c.x, c.y, c.radius + 8 + pulse * 6, 0, Math.PI*2); ctx.stroke();
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(c.x, c.y, c.radius + 16 + pulse * 4, 0, Math.PI*2); ctx.stroke();
+      ctx.restore();
+    }
 
     // Selection ring
     if (isSelected) {
@@ -3037,11 +3187,13 @@ function startGame() {
   game.floatingTexts = [];
   game.over = false; game.running = false; game.logLines = [];
   game.flagStand = null;
+  game.spike = null; game.spikeCooldown = 8;
   game.deathCount = { 0: 0, 1: 0 };
 
   // --- Map aléatoire ---
   game.map = MAPS[Math.floor(Math.random() * MAPS.length)];
   generateBgCanvas(game.map);
+  buildNavGrid(game.map);
   const aSpawns = game.map.allySpawns;
   const eSpawns = game.map.enemySpawns;
 

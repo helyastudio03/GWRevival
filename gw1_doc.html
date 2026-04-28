@@ -434,7 +434,8 @@ footer {
           <div class="keybind-row"><kbd>D</kbd><span>Droite</span></div>
           <div class="keybind-row"><kbd>Clic ennemi</kbd><span>Cibler + activer l'auto-attaque</span></div>
           <div class="keybind-row"><kbd>Clic sol</kbd><span>Se déplacer</span></div>
-          <div class="keybind-row"><kbd>Tab</kbd><span>Changer de cible</span></div>
+          <div class="keybind-row"><kbd>Tab</kbd><span>Cibler l'ennemi suivant (plus proche en premier) + activer auto-attaque</span></div>
+          <div class="keybind-row"><kbd>Shift+Tab</kbd><span>Cibler l'ennemi précédent</span></div>
           <div class="keybind-row"><kbd>Espace</kbd><span>Toggle auto-attaque</span></div>
         </div>
       </div>
@@ -462,7 +463,7 @@ footer {
     <div class="subsection-title">Ciblage</div>
     <ul>
       <li>Clic gauche sur un personnage : sélectionner comme cible (ennemi → active l'auto-attaque)</li>
-      <li><kbd>Tab</kbd> : cycle entre les ennemis vivants</li>
+      <li><kbd>Tab</kbd> / <kbd>Shift+Tab</kbd> : cycle entre les ennemis vivants, triés du plus proche au plus loin ; activer automatiquement l'auto-attaque sur la cible sélectionnée</li>
       <li><strong>Auto-retarget</strong> : si la cible meurt, le jeu sélectionne automatiquement le prochain ennemi vivant</li>
       <li>La cible sélectionnée est indiquée par un anneau pointillé rouge (ennemi) ou vert (allié) sur le canvas</li>
     </ul>
@@ -496,8 +497,8 @@ footer {
     <div class="subsection-title">Incantation &amp; interruption</div>
     <ul>
       <li>Chaque sort a un <strong>temps de cast</strong> (0.25s à 3s). Une barre de progression s'affiche sous le personnage.</li>
-      <li>Recevoir un <strong>knockdown</strong> interrompt instantanément l'incantation.</li>
-      <li>Les skills d'interruption (Choc, Tir Distrayant, Interruption mesmer) annulent le cast et remettent le skill en recharge.</li>
+      <li>Recevoir un <strong>knockdown</strong> interrompt instantanément tout cast de durée &gt; 0.5s (Choc, Marteau Dévastateur, Charge du Taureau si la cible se déplace, etc.).</li>
+      <li>Les skills d'interruption explicites (Tir Distrayant, Interruption mesmer) annulent le cast quelle que soit sa durée et remettent le skill en recharge.</li>
       <li>Les maléfices <strong>Retour de Flamme</strong> et <strong>Esprit Rancunier</strong> punissent chaque sort lancé avec des dégâts supplémentaires.</li>
     </ul>
 
@@ -1537,8 +1538,11 @@ footer {
     <div class="section-title">Intelligence Artificielle</div>
     <p>L'IA se met à jour toutes les 0.3–0.6 secondes par personnage (timer aléatoire pour éviter la synchronisation). Chaque classe a un arbre de comportement distinct.</p>
 
-    <div class="subsection-title">Pathfinding</div>
-    <p>Les personnages IA utilisent <strong>steerDir()</strong> : à chaque déplacement vers une cible, 11 angles sont sondés (0°, ±25°, ±50°, ±80°, ±110°, ±150°) pour trouver la première direction libre de murs. Cela permet de contourner les obstacles sans A*.</p>
+    <div class="subsection-title">Pathfinding A*</div>
+    <p>Chaque map génère une <strong>grille de navigation</strong> (70×40 cellules de 20 px) marquant les murs comme bloqués (avec 1 cellule de marge). Les personnages IA calculent un chemin <strong>A*</strong> 8-directionnel vers leur cible, mis à jour dès que la destination a bougé de plus d'une cellule (~20 px) — avec un délai minimum de 0.2 s décalé aléatoirement entre personnages pour éviter les pics CPU. En l'absence de chemin (destination dans un mur), le personnage va en ligne droite.</p>
+
+    <div class="subsection-title">Spike coordonné</div>
+    <p>Toutes les 12–18 secondes, l'équipe ennemie déclenche un <strong>spike coordonné</strong> : tous les damage dealers IA focalisent la même cible alliée pendant 4 secondes. La priorité est donnée aux healers adverses (Moine, Ritualiste). La cible est signalée visuellement par des <strong>anneaux rouges pulsants</strong> sur le canvas et un message « ⚡ SPIKE » flottant.</p>
 
     <div class="subsection-title">Comportements par classe</div>
     <div class="tbl-wrap"><table>
