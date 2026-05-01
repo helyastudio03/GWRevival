@@ -506,6 +506,7 @@ footer {
       <li>Recevoir un <strong>knockdown</strong> interrompt instantanément tout cast de durée &gt; 0.5s (Choc, Marteau Dévastateur, Charge du Taureau si la cible se déplace, etc.).</li>
       <li>Les skills d'interruption explicites (Tir Distrayant, Interruption mesmer) annulent le cast quelle que soit sa durée et remettent le skill en recharge.</li>
       <li><strong>Blocage de Pouvoir</strong> (Mesmer) : interrompt un sort ET met ce skill spécifiquement en rechargement forcé de <strong>20 secondes</strong>.</li>
+      <li><strong>Mouvement pendant un cast</strong> : se déplacer (touches ZQSD/WASD ou clic sol) annule immédiatement le cast en cours. Le personnage reste immobile pendant tout le temps d'incantation ; les IA sont également immobilisées pendant leur cast.</li>
       <li><strong>File de compétence (joueur uniquement)</strong> : appuyer sur une touche de compétence pendant un cast en cours la met en file d'attente (bordure verte). Elle s'exécute automatiquement dès la fin du cast. Si le cast est interrompu, la file est effacée.</li>
       <li>Les maléfices <strong>Retour de Flamme</strong> et <strong>Esprit Rancunier</strong> punissent chaque sort lancé avec des dégâts supplémentaires.</li>
     </ul>
@@ -920,6 +921,7 @@ footer {
     <ul>
       <li><strong>Cercle de sélection</strong> — anneau pointillé vert (allié ciblé) ou rouge (ennemi ciblé) autour du personnage</li>
       <li><strong>Projectiles</strong> — petits cercles colorés se déplaçant de la source vers la cible (feu = orange, foudre = jaune, flèche = kaki) ; les projectiles sont <strong>bloqués par les murs</strong> (après 50 px de vol) et produisent un flash gris à l'impact. Seuls les sorts venant « du ciel » (Pluie de Météores, Tempête de Feu, Blizzard) ignorent les obstacles.</li>
+      <li><strong>Ligne de vue (LOS)</strong> : les IA vérifient la ligne de vue avant de lancer tout skill de portée &gt; 150 px (sorts élémentalistes, mesmers, nécros, flèches, lances paragone). Si un mur obstrue la vue, le skill n'est pas utilisé et le personnage se repositionne vers la cible pour dégager la ligne de vue. L'algorithme parcourt le segment source→cible par pas de 12 px et teste chaque rectangle de mur.</li>
       <li><strong>Effets d'impact</strong> — cercles qui s'expandent et s'estompent à l'impact ou au cast</li>
       <li><strong>Zones AoE</strong> — cercles semi-transparents colorés (feu = orange, glace = bleu clair, esprits = rouge/cyan)</li>
       <li><strong>Points de condition</strong> — petits cercles colorés sous les personnages indiquant les conditions actives</li>

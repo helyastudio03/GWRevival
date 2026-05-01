@@ -1881,6 +1881,7 @@ document.getElementById('arena').addEventListener('click', e => {
     game.player.target = hit;
     // Don't auto-enable auto-attack or auto-move on click; player controls that via Space
   } else {
+    if (game.player.casting) { game.player.casting = null; game.player.castTimer = 0; }
     game.player.moveTarget = { x: mx, y: my };
     game.player.pathPoints = []; game.player.pathDest = null;
   }
@@ -1917,6 +1918,7 @@ function useSkill(char, idx) {
   if (sk.cast > 0) {
     char.casting = { skId, idx, sk, target: char.target };
     char.castTimer = 0;
+    char.moveTarget = null; char.pathPoints = []; char.pathDest = null;
   } else {
     // For instant melee attacks, verify the target is in range before consuming energy/CD
     if (!sk.isToggle && sk.range && sk.range <= 160) {
@@ -1981,6 +1983,7 @@ function moveChar(c, dt) {
     if (left)  dx -= 1;
     if (right) dx += 1;
     if (dx !== 0 || dy !== 0) {
+      if (c.casting) { c.casting = null; c.castTimer = 0; c.isMoving = false; return; }
       const len = Math.hypot(dx, dy);
       dx /= len; dy /= len;
       // Steer around walls when pressing into them
@@ -2020,6 +2023,7 @@ function moveChar(c, dt) {
       c.isMoving = false;
     }
   } else if (c.moveTarget) {
+    if (c.casting) { c.isMoving = false; return; }
     const mdx = c.moveTarget.x - c.x, mdy = c.moveTarget.y - c.y;
     const dd = Math.hypot(mdx, mdy);
     if (dd < 4) { c.moveTarget = null; c.pathPoints = []; c.isMoving = false; }
@@ -2113,6 +2117,21 @@ function resolveWallCollision(c) {
       else                 c.y = w.y + w.h + c.radius;
     }
   }
+}
+
+function hasLOS(ax, ay, bx, by, walls) {
+  const dx = bx - ax, dy = by - ay;
+  const len = Math.hypot(dx, dy);
+  if (len < 1) return true;
+  const steps = Math.ceil(len / 12);
+  const sx = dx / steps, sy = dy / steps;
+  for (let i = 1; i < steps; i++) {
+    const px = ax + sx * i, py = ay + sy * i;
+    for (const w of walls) {
+      if (px > w.x && px < w.x + w.w && py > w.y && py < w.y + w.h) return false;
+    }
+  }
+  return true;
 }
 
 // ── AI ────────────────────────────────────────────────────────────
@@ -2217,9 +2236,12 @@ function aiUpdate(c, dt, g) {
       tgt = enemies.reduce((best, e) => e.hp < best.hp ? e : best, enemies[0]);
     }
     c.target = tgt;
-    // Keep distance
+    // Keep distance; reposition for line of sight if blocked
     const d = dist(c, tgt);
-    if (d < 250) {
+    const los = !g.map || !g.map.walls || hasLOS(c.x, c.y, tgt.x, tgt.y, g.map.walls);
+    if (!los) {
+      c.moveTarget = { x: clamp(tgt.x + rnd(-60, 60), 30, WORLD_W-30), y: clamp(tgt.y + rnd(-60, 60), 30, WORLD_H-30) };
+    } else if (d < 250) {
       const angle = Math.atan2(c.y - tgt.y, c.x - tgt.x);
       c.moveTarget = { x: clamp(tgt.x + Math.cos(angle) * 320, 30, WORLD_W-30), y: clamp(tgt.y + Math.sin(angle) * 320, 30, WORLD_H-30) };
     } else if (d > 420) {
@@ -2280,6 +2302,9 @@ function tryAiSkill(c, skId, g) {
   if (c.energy < sk.cost) return false;
   if (c.casting) return false;
   if (hasCond(c, 'knockdown')) return false;
+  if (sk.range && sk.range > 150 && c.target && g.map && g.map.walls) {
+    if (!hasLOS(c.x, c.y, c.target.x, c.target.y, g.map.walls)) return false;
+  }
 
   if (sk.cast > 0) {
     c.casting = { skId, idx, sk, target: c.target };
