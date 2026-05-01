@@ -2774,10 +2774,12 @@ function buildNavGrid(map) {
   if (map.navGrid) return;
   const g = new Uint8Array(GRID_W * GRID_H);
   for (const w of (map.walls || [])) {
-    const x0 = Math.max(0, Math.floor(w.x / GRID_CELL) - 1);
-    const y0 = Math.max(0, Math.floor(w.y / GRID_CELL) - 1);
-    const x1 = Math.min(GRID_W, Math.ceil((w.x + w.w) / GRID_CELL) + 1);
-    const y1 = Math.min(GRID_H, Math.ceil((w.y + w.h) / GRID_CELL) + 1);
+    // No margin: mark only cells that physically contain wall geometry.
+    // resolveWallCollision handles physical accuracy; the navGrid only guides A*.
+    const x0 = Math.max(0, Math.floor(w.x / GRID_CELL));
+    const y0 = Math.max(0, Math.floor(w.y / GRID_CELL));
+    const x1 = Math.min(GRID_W, Math.ceil((w.x + w.w) / GRID_CELL));
+    const y1 = Math.min(GRID_H, Math.ceil((w.y + w.h) / GRID_CELL));
     for (let gy = y0; gy < y1; gy++)
       for (let gx = x0; gx < x1; gx++)
         g[gy * GRID_W + gx] = 1;
