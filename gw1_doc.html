@@ -1569,11 +1569,28 @@ footer {
     <p><strong>Correction blocage (navGrid sans marge)</strong> : la grille marque uniquement les cellules physiquement occupées par la géométrie des murs — sans marge d'expansion. Une marge de ±1 cellule élargissait chaque mur de 20 px de chaque côté, ce qui fusionnait les bords de murs adjacents et bouchait complètement les couloirs étroits (ex. zone de départ Cour d'Ascalon : couloir de 62 px, soit 3 cellules, réduit à zéro avec marge). En supprimant la marge, les couloirs restent navigables pour A* ; la précision physique (empêcher les personnages de traverser les murs) est assurée par <code>resolveWallCollision</code> à chaque frame, indépendamment de la grille.</p>
     <p><strong>Détection de blocage (stuck detection)</strong> : si un personnage IA n'a pas avancé de plus de 25 px en 2 secondes alors qu'il a une destination active, le chemin est effacé et la destination est décalée aléatoirement de ±90 px pour forcer un recalcul A* sur un itinéraire alternatif. Ce mécanisme évite les cas où un personnage se retrouve coincé derrière un angle de mur à répéter en boucle des projectiles qui percutent ce mur.</p>
 
+    <div class="subsection-title">Kiting (classes à distance)</div>
+    <p>Les <strong>élémentalistes, mesmers, nécros, rôdeurs et paragones</strong> fuient dès qu'un ennemi de corps-à-corps (portée ≤ 160 px : guerrier, assassin, derviche) entre dans leur zone de danger (150 px pour les lanceurs de sorts, 200 px pour les rôdeurs/paragones). Le personnage calcule l'angle de fuite opposé à l'attaquant et s'éloigne de 200–220 px. Les rôdeurs et paragones maintiennent également une distance optimale à 65% de leur portée d'attaque. Si disponible, le Sprint est activé automatiquement pour échapper à un poursuivant.</p>
+
+    <div class="subsection-title">Ciblage prioritaire (casters en incantation)</div>
+    <p>Toutes les classes IA vérifient si un <strong>healer ennemi est en train d'incanter</strong> un sort. Si c'est le cas :</p>
+    <ul>
+      <li><strong>Élémentalistes / Mesmers</strong> : switchent immédiatement sur le healer pour lui faire perdre son cast par pression de dégâts.</li>
+      <li><strong>Rôdeurs</strong> : utilisent <strong>Tir Distrayant</strong> en priorité absolue pour interrompre le cast. C'est le comportement le plus fidèle à GW1.</li>
+      <li><strong>Guerriers / Assassins / Dervishes</strong> : si le healer est à portée de mêlée, switchent sur lui et utilisent <strong>Choc</strong> si disponible pour interrompre instantanément.</li>
+    </ul>
+
+    <div class="subsection-title">Coordination défensive (Spike réponse)</div>
+    <p>Dès qu'un <strong>spike coordonné</strong> est annoncé (<code>g.spike</code> actif), l'IA Moine et l'IA Ritualiste réagissent <em>avant</em> que les dégâts arrivent : ils ciblent la victime désignée et posent <strong>Esprit Protecteur</strong>, <strong>Gardien</strong> et <strong>Lien Spirituel</strong> si ces enchantements ne sont pas déjà actifs. Cela simule le pre-prot des moines GW1 qui lisaient le spike et agissaient de manière préventive.</p>
+
+    <div class="subsection-title">Flocking (séparation des alliés)</div>
+    <p>Un vecteur de séparation est calculé à chaque frame dans <code>moveChar</code> pour tous les personnages IA en mouvement. Si deux alliés sont à moins de 55 px l'un de l'autre, une force de répulsion proportionnelle à la proximité (30% du vecteur de déplacement) est ajoutée et le vecteur résultant est renormalisé. Cela évite l'empilement complet de toute l'équipe sur le même point tout en laissant les personnages se regrouper naturellement autour des objectifs.</p>
+
     <div class="subsection-title">Spike coordonné</div>
     <p>Toutes les 12–18 secondes, l'équipe ennemie déclenche un <strong>spike coordonné</strong> : tous les damage dealers IA focalisent la même cible alliée pendant 4 secondes. La priorité est donnée aux healers adverses (Moine, Ritualiste). La cible est signalée visuellement par des <strong>anneaux rouges pulsants</strong> sur le canvas et un message « ⚡ SPIKE » flottant.</p>
 
-    <div class="subsection-title">Résurrection (IA Moine)</div>
-    <p>L'IA Moine vérifie à chaque cycle si un allié est mort. Si c'est le cas et que le <strong>Signet de Résurrection</strong> est disponible (usage unique), il l'utilise en priorité sur le mort (le personnage ciblé si spécifié, sinon le premier mort trouvé). La résurrection prend 3 secondes de cast et ressuscite à 25% PV — avec le DP actuel du ressuscité.</p>
+    <div class="subsection-title">Résurrection (IA Moine / Ritualiste)</div>
+    <p>L'IA Moine et Ritualiste vérifient à chaque cycle si un allié est mort. Si c'est le cas et que le <strong>Signet de Résurrection</strong> est disponible (usage unique), il l'utilise en priorité sur le mort (le personnage ciblé si spécifié, sinon le premier mort trouvé). La résurrection prend 3 secondes de cast et ressuscite à 25% PV — avec le DP actuel du ressuscité.</p>
 
     <div class="subsection-title">Privation d'énergie (IA Mesmer)</div>
     <p>L'IA Mesmer cible en priorité <strong>les ennemis avec le plus d'énergie actuelle</strong> parmi les lanceurs de sorts (ceux dont l'énergie max dépasse 25). Elle utilise <strong>Blocage de Pouvoir</strong> et <strong>Surtension d'Énergie</strong> avant ses autres sorts, pour épuiser les healers et casters avant de les attaquer.</p>
@@ -1582,13 +1599,12 @@ footer {
     <div class="tbl-wrap"><table>
       <tr><th>Classe / Rôle</th><th>Comportement</th></tr>
       <tr>
-        <td><span class="class-monk">Moine (Healer)</span></td>
+        <td><span class="class-monk">Moine / Ritualiste (Healer)</span></td>
         <td>
           Trie l'équipe par % PV. Si un allié &lt;85% PV : se rapproche et soigne.<br>
-          &lt;75% → Prière de Guérison · &lt;50% → Parole de Guérison · &lt;25% → Santé Insufflée + Intervention Divine.<br>
-          Retire les conditions automatiquement.<br>
-          <strong>Idle (équipe en bonne santé)</strong> : pose des enchantements de protection préventifs (Gardien, Esprit Protecteur, Lien Spirituel) sur l'allié le plus vulnérable.
-          Attaque les ennemis à portée si aucun sort n'est disponible. Reste à &lt;200 px de l'équipe.
+          &lt;75% → Prière de Guérison · &lt;50% → Parole de Guérison / Soin Corps &amp; Âme · &lt;25% → Intervention Divine.<br>
+          Retire les conditions automatiquement. <strong>Spike annoncé</strong> → pre-prot immédiat sur la cible (Esprit Protecteur, Gardien, Lien Spirituel).<br>
+          <strong>Idle</strong> : enchantements de protection préventifs. Attaque les ennemis à portée. Reste à &lt;200 px de l'équipe.
         </td>
       </tr>
       <tr>
@@ -1600,9 +1616,19 @@ footer {
         </td>
       </tr>
       <tr>
-        <td><span class="class-warrior">Guerrier / Rôdeur / autres mêlée</span></td>
+        <td><span class="class-ranger">Rôdeur / Paragone</span></td>
+        <td>
+          Kite les ennemis de mêlée à &lt;200 px (fuite + Sprint si disponible). Distance optimale 65% de la portée d'attaque.<br>
+          <strong>Tir Distrayant</strong> utilisé immédiatement si la cible est en train d'incanter.<br>
+          Priorité : healer ennemi en train de caster → spike → joueur → ennemi le plus bas.<br>
+          Auto-attaque si hors contact de mêlée et dans la portée.
+        </td>
+      </tr>
+      <tr>
+        <td><span class="class-warrior">Guerrier / Assassin / Derviche</span></td>
         <td>
           Préfère cibler le joueur si &gt;20% PV, sinon l'ennemi le plus bas.<br>
+          Switch sur un healer ennemi en incantation s'il est à portée (interrompre avec <strong>Choc</strong>).<br>
           Se soigne avec Signet de Guérison si &lt;35% PV.<br>
           Active Sprint si la cible est à &gt;250 px. Auto-attaque dès que dans la portée.
         </td>

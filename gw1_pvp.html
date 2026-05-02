@@ -2072,6 +2072,23 @@ function moveChar(c, dt) {
     c.isMoving = false;
   }
 
+  // Point 9: Ally separation — smooth flocking to prevent stacking
+  if (!c.isPlayer && (dx !== 0 || dy !== 0)) {
+    let sx = 0, sy = 0;
+    for (const a of game.chars) {
+      if (a === c || a.team !== c.team || !a.alive) continue;
+      const adx = c.x - a.x, ady = c.y - a.y;
+      const ad = Math.hypot(adx, ady);
+      if (ad < 55 && ad > 1) { sx += (adx / ad) * (1 - ad / 55); sy += (ady / ad) * (1 - ad / 55); }
+    }
+    if (sx !== 0 || sy !== 0) {
+      const sl = Math.hypot(sx, sy);
+      dx += (sx / sl) * 0.35; dy += (sy / sl) * 0.35;
+      const dl = Math.hypot(dx, dy);
+      if (dl > 0) { dx /= dl; dy /= dl; }
+    }
+  }
+
   c.x = clamp(c.x + dx * spd * dt, c.radius, WORLD_W - c.radius);
   c.y = clamp(c.y + dy * spd * dt, c.radius, WORLD_H - c.radius);
   resolveWallCollision(c);
@@ -2173,9 +2190,11 @@ function aiUpdate(c, dt, g) {
     // Flag capturé et zone calme → IA normale (continue ci-dessous)
   }
 
-  // ── Monk AI ──
-  if (c.skills.includes('mo_woh') || c.skills.includes('mo_heal')) {
-    // Try to resurrect a fallen teammate first
+  // ── Monk / Ritualist Healer AI ──
+  const isHealer = c.skills.includes('mo_woh') || c.skills.includes('mo_heal') ||
+                   (c.healBonus && c.skills.some(s => s.startsWith('rt_')));
+  if (isHealer) {
+    // Resurrection first
     const deadAlly = g.chars.find(x => x.team === c.team && !x.alive && x !== c);
     if (deadAlly) {
       const savedTgt = c.target;
@@ -2183,6 +2202,15 @@ function aiUpdate(c, dt, g) {
       if (tryAiSkill(c, 'w_ressig', g)) return;
       c.target = savedTgt;
     }
+
+    // Point 8: Pre-emptive spike defense — cast protections before spike lands
+    if (g.spike && g.spike.target && g.spike.target.team === c.team && g.spike.target.alive) {
+      c.target = g.spike.target;
+      if (!hasEnch(c.target, 'protective_spirit')) tryAiSkill(c, 'mo_protspirit', g);
+      if (!hasEnch(c.target, 'guardian'))           tryAiSkill(c, 'mo_guardian', g);
+      if (!hasEnch(c.target, 'spirit_bond'))        tryAiSkill(c, 'mo_spiritbond', g);
+    }
+
     // Find most wounded ally (including self)
     const team = [c, ...allies];
     team.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
@@ -2190,44 +2218,48 @@ function aiUpdate(c, dt, g) {
 
     if (wounded) {
       c.target = wounded;
-      // Stay near wounded ally
       c.moveTarget = { x: clamp(wounded.x + rnd(-60,60), 30, WORLD_W-30), y: clamp(wounded.y + rnd(-60,60), 30, WORLD_H-30) };
 
-      // Choose heal skill
+      // Choose heal skill (monk first, ritualist fallback)
       if (wounded.hp / wounded.maxHp < 0.5) {
-        tryAiSkill(c, 'mo_woh', g);
+        tryAiSkill(c, 'mo_woh', g) || tryAiSkill(c, 'rt_mendbodyandsoul', g);
       } else if (wounded.hp / wounded.maxHp < 0.75) {
-        if (!tryAiSkill(c, 'mo_heal', g)) tryAiSkill(c, 'mo_orison', g);
+        tryAiSkill(c, 'mo_heal', g) || tryAiSkill(c, 'mo_orison', g) || tryAiSkill(c, 'rt_mendbodyandsoul', g);
       }
-      // Emergency: divine intervention
+      // Emergency
       if (wounded.hp / wounded.maxHp < 0.25) tryAiSkill(c, 'mo_divine', g);
-      // Remove conditions
+      // Conditions
       if (Object.keys(wounded.conditions).length > 0) tryAiSkill(c, 'mo_removecond', g);
-      // Protective spirit on low HP
-      if (wounded.hp / wounded.maxHp < 0.4) tryAiSkill(c, 'mo_protspirit', g);
+      // Protection
+      if (wounded.hp / wounded.maxHp < 0.4) {
+        if (!hasEnch(wounded, 'protective_spirit')) tryAiSkill(c, 'mo_protspirit', g);
+      }
+      // Ritualist weapon enchants
+      tryAiSkill(c, 'rt_weaponofwarding', g);
       return;
     }
-    // Idle: team healthy — cast protective buffs proactively, attack nearby enemies
+    // Idle: pre-emptive buffs + light attack pressure
     const lowestRatio = team.reduce((a, b) => (a.hp / a.maxHp < b.hp / b.maxHp ? a : b));
     c.target = lowestRatio;
-    // Try proactive protection on the most vulnerable ally
     tryAiSkill(c, 'mo_guardian', g) || tryAiSkill(c, 'mo_protspirit', g) || tryAiSkill(c, 'mo_spiritbond', g);
-    // Light attack pressure on close enemies
+    tryAiSkill(c, 'rt_weaponofwarding', g) || tryAiSkill(c, 'rt_splinterweapon', g);
     const closeEnemy = enemies.find(e => dist(c, e) < c.attackRange + 40);
     if (closeEnemy) { c.target = closeEnemy; c.autoAttack = true; }
     else { c.autoAttack = false; }
-    // Stay within 200px of closest ally
     const anchor = allies[0] || c;
     if (dist(c, anchor) > 200) c.moveTarget = { x: anchor.x, y: anchor.y };
     return;
   }
 
   // ── Elementalist / Mesmer / Necromancer AI ──
-  if (c.skills.some(s => s.startsWith('e_') || s.startsWith('me_'))) {
-    // Mesmer energy denial: target highest-energy caster; others: target lowest HP
+  if (c.skills.some(s => s.startsWith('e_') || s.startsWith('me_') || s.startsWith('n_'))) {
+    // Point 7: Prioritize casting healers (interrupt them by focusing fire)
+    const castingHlr = enemies.find(e => e.alive && e.casting && e.healBonus);
     const hasDenial = c.skills.includes('me_energysurge') || c.skills.includes('me_powerblock');
     let tgt;
-    if (hasDenial) {
+    if (castingHlr) {
+      tgt = castingHlr;
+    } else if (hasDenial) {
       const casters = enemies.filter(e => e.maxEnergy > 25);
       tgt = casters.length
         ? casters.reduce((best, e) => e.energy > best.energy ? e : best, casters[0])
@@ -2235,11 +2267,18 @@ function aiUpdate(c, dt, g) {
     } else {
       tgt = enemies.reduce((best, e) => e.hp < best.hp ? e : best, enemies[0]);
     }
+    // Spike focus
+    if (g.spike && g.spike.target && g.spike.target.alive && !castingHlr) tgt = g.spike.target;
     c.target = tgt;
-    // Keep distance; reposition for line of sight if blocked
+
+    // Point 6: Urgent kiting — flee from melee attackers in contact range
+    const meleeAttacker = enemies.find(e => e.attackRange <= 160 && dist(c, e) < 150);
     const d = dist(c, tgt);
     const los = !g.map || !g.map.walls || hasLOS(c.x, c.y, tgt.x, tgt.y, g.map.walls);
-    if (!los) {
+    if (meleeAttacker) {
+      const angle = Math.atan2(c.y - meleeAttacker.y, c.x - meleeAttacker.x);
+      c.moveTarget = { x: clamp(c.x + Math.cos(angle) * 200, 30, WORLD_W-30), y: clamp(c.y + Math.sin(angle) * 200, 30, WORLD_H-30) };
+    } else if (!los) {
       c.moveTarget = { x: clamp(tgt.x + rnd(-60, 60), 30, WORLD_W-30), y: clamp(tgt.y + rnd(-60, 60), 30, WORLD_H-30) };
     } else if (d < 250) {
       const angle = Math.atan2(c.y - tgt.y, c.x - tgt.x);
@@ -2247,6 +2286,8 @@ function aiUpdate(c, dt, g) {
     } else if (d > 420) {
       c.moveTarget = { x: clamp(tgt.x + rnd(-60,60), 30, WORLD_W-30), y: clamp(tgt.y + rnd(-60,60), 30, WORLD_H-30) };
     }
+    // Sprint away if melee attacker close and sprint available
+    if (meleeAttacker && !hasEnch(c, 'sprint')) tryAiSkill(c, 'w_sprint', g);
     // Energy denial first, then other spells
     if (hasDenial) {
       if (tryAiSkill(c, 'me_powerblock', g)) return;
@@ -2259,13 +2300,55 @@ function aiUpdate(c, dt, g) {
     return;
   }
 
-  // ── Warrior / Ranger AI ──
+  // ── Ranger / Paragon AI ──
+  if (c.classKey === 'ranger' || c.classKey === 'paragon') {
+    // Point 7: Prioritize casting healer targets for maximum interrupt pressure
+    const castingHlr = enemies.find(e => e.alive && e.casting && e.healBonus);
+    const playerEnemy = enemies.find(e => e.isPlayer);
+    let tgt = castingHlr
+      || (g.spike && g.spike.target && g.spike.target.alive ? g.spike.target : null)
+      || (playerEnemy && playerEnemy.hp / playerEnemy.maxHp > 0.2 ? playerEnemy : null)
+      || enemies.reduce((best, e) => e.hp < best.hp ? e : best, enemies[0]);
+    c.target = tgt;
+
+    // Point 6: Kiting — flee from melee attackers before they reach attack range
+    const meleeAttacker = enemies.find(e => e.attackRange <= 160 && dist(c, e) < 200);
+    const d = dist(c, tgt);
+    const optDist = c.attackRange * 0.65;
+    if (meleeAttacker) {
+      const angle = Math.atan2(c.y - meleeAttacker.y, c.x - meleeAttacker.x);
+      c.moveTarget = { x: clamp(c.x + Math.cos(angle) * 220, 30, WORLD_W-30), y: clamp(c.y + Math.sin(angle) * 220, 30, WORLD_H-30) };
+    } else if (d > c.attackRange + 20) {
+      c.moveTarget = { x: clamp(tgt.x + rnd(-30,30), 30, WORLD_W-30), y: clamp(tgt.y + rnd(-30,30), 30, WORLD_H-30) };
+    } else if (d < optDist) {
+      const angle = Math.atan2(c.y - tgt.y, c.x - tgt.x);
+      c.moveTarget = { x: clamp(tgt.x + Math.cos(angle) * (optDist + 50), 30, WORLD_W-30), y: clamp(tgt.y + Math.sin(angle) * (optDist + 50), 30, WORLD_H-30) };
+    } else {
+      c.moveTarget = null;
+    }
+
+    // Self-heal; sprint away if being chased
+    if (c.hp / c.maxHp < 0.35 && tryAiSkill(c, 'w_healsig', g)) return;
+    if (meleeAttacker && !hasEnch(c, 'sprint')) tryAiSkill(c, 'w_sprint', g);
+    // Immediately interrupt a casting target
+    if (tgt.casting) tryAiSkill(c, 'r_distractingshot', g);
+    // Ranged skills; paragone support skills (anthems etc.) first if team nearby
+    const rngSkills = c.skills.filter(s => s.startsWith('r_') || s.startsWith('p_'));
+    for (const sk of rngSkills) {
+      if (tryAiSkill(c, sk, g)) break;
+    }
+    c.autoAttack = !meleeAttacker && d <= c.attackRange + 20;
+    return;
+  }
+
+  // ── Warrior / Assassin / Dervish AI ──
   let tgt = enemies.reduce((best, e) => e.hp < best.hp ? e : best, enemies[0]);
-  // prefer the player
   const playerEnemy = enemies.find(e => e.isPlayer);
   if (playerEnemy && playerEnemy.hp / playerEnemy.maxHp > 0.2) tgt = playerEnemy;
-  // spike coordonné : les damage dealers focusent la cible désignée
   if (g.spike && g.spike.target && g.spike.target.alive && !c.healBonus) tgt = g.spike.target;
+  // Point 7: Opportunistically switch to casting healers in melee range to interrupt
+  const castingHlrNear = enemies.find(e => e.alive && e.casting && e.healBonus && dist(c, e) <= c.attackRange + 80);
+  if (castingHlrNear) tgt = castingHlrNear;
   c.target = tgt;
 
   const d = dist(c, tgt);
@@ -2280,6 +2363,8 @@ function aiUpdate(c, dt, g) {
   if (c.hp / c.maxHp < 0.35 && tryAiSkill(c, 'w_healsig', g)) return;
   // sprint to close gap
   if (d > 250 && !hasEnch(c,'sprint')) tryAiSkill(c, 'w_sprint', g);
+  // Interrupt casting target immediately with Shock if in range
+  if (tgt.casting && d <= 160) tryAiSkill(c, 'w_shock', g);
   // pressure skills
   if (d <= ar + 30) {
     tryAiSkill(c, 'w_eviscerate', g) ||
