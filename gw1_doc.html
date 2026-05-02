@@ -924,7 +924,7 @@ footer {
       <li><strong>Ligne de vue (LOS)</strong> : les IA vérifient la ligne de vue avant de lancer tout skill de portée &gt; 150 px (sorts élémentalistes, mesmers, nécros, flèches, lances paragone). Si un mur obstrue la vue, le skill n'est pas utilisé et le personnage se repositionne vers la cible pour dégager la ligne de vue. L'algorithme parcourt le segment source→cible par pas de 12 px et teste chaque rectangle de mur.</li>
       <li><strong>Effets d'impact</strong> — cercles qui s'expandent et s'estompent à l'impact ou au cast</li>
       <li><strong>Zones AoE</strong> — cercles semi-transparents colorés (feu = orange, glace = bleu clair, esprits = rouge/cyan)</li>
-      <li><strong>Points de condition</strong> — petits cercles colorés sous les personnages indiquant les conditions actives</li>
+      <li><strong>Points de condition et maléfice</strong> — petits cercles colorés sous chaque personnage : contour sombre = condition (brûlure, poison, saignement…), contour blanc = maléfice hex (Empathie, Retour de Flamme…). Le nombre de points reflète le nombre d'effets actifs.</li>
       <li><strong>Barre de cast</strong> — barre horizontale orangée au-dessus des barres PV/énergie, affichée sur <em>tous</em> les personnages en train d'incanter ; le nom du skill est inscrit à l'intérieur. <strong>Si l'ennemi ciblé incante</strong>, sa barre de cast est agrandie (8 px au lieu de 5 px) et entourée d'une lueur dorée pour faciliter l'interruption.</li>
       <li><strong>Barre PV</strong> — verte→jaune→rouge au-dessus de chaque personnage vivant</li>
       <li><strong>Knockdown</strong> — ellipse aplatie dorée dessinée sous le personnage renversé (via transformation ctx.scale)</li>
@@ -936,7 +936,7 @@ footer {
       <div class="card">
         <strong>Panel droit</strong>
         <ul style="margin-top:8px; font-size:0.88em">
-          <li><strong>Équipe</strong> : icône de classe + barre PV + barre énergie + points de condition pour chaque allié IA (⚔ Guerrier, ✚ Moine, ◆ Élémentaliste…)</li>
+          <li><strong>Équipe</strong> : icône de classe + barre PV + barre énergie + points de condition/hex + <strong>barre de cast orangée</strong> (avec nom du skill) affichée sous les barres quand un allié incante</li>
           <li><strong>Cible</strong> : nom, barre PV, conditions de la cible sélectionnée</li>
           <li><strong>Log de combat</strong> : messages colorés en temps réel (rouge=dégâts, vert=soins, violet=maléfices, orange=conditions) + <strong>bordure colorée par équipe</strong> : bordure gauche bleue pour les messages concernant les alliés, rouge pour les ennemis</li>
         </ul>
@@ -946,7 +946,7 @@ footer {
         <ul style="margin-top:8px; font-size:0.88em">
           <li><strong>Barres joueur</strong> : PV (vert), Énergie (bleu), Cast (doré)</li>
           <li><strong>Conditions joueur</strong> : badges colorés avec nom</li>
-          <li><strong>Barre de skills</strong> : 8 slots avec icône emoji, numéro, overlay gris = cooldown, overlay rouge = énergie insuffisante</li>
+          <li><strong>Barre de skills</strong> : 8 slots avec icône emoji, numéro, overlay gris = cooldown, overlay rouge = énergie insuffisante. Quand un enchantement créé par ce skill est actif sur le joueur, la bordure devient cyan et un compteur de durée restante (en secondes) s'affiche en bas à droite du slot.</li>
           <li><strong>Tooltip</strong> : s'affiche au survol de chaque skill (nom, tags, description, stats)</li>
         </ul>
       </div>

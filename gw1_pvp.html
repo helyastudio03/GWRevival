@@ -154,6 +154,16 @@ canvas#arena { border: 2px solid #8a6428; cursor: crosshair; display: block; box
 .skill-slot.on-cd .skill-cd-overlay { display: flex; }
 .skill-toggle-active { border-color: #f80 !important; background: #2a1800 !important; }
 .skill-queued { border-color: #4f4 !important; box-shadow: 0 0 8px rgba(80,255,80,0.6), inset 0 0 4px rgba(80,255,80,0.15) !important; }
+.skill-ench-timer {
+  position: absolute; bottom: 2px; right: 3px; font-size: 8px; color: #0ff;
+  font-weight: bold; display: none; text-shadow: 0 0 4px #0ff8;
+}
+.skill-slot.ench-active { border-color: #0cc !important; box-shadow: 0 0 6px #0ff6, inset 0 0 3px rgba(0,255,255,0.1) !important; }
+.skill-slot.ench-active .skill-ench-timer { display: block; }
+
+.party-cast-bar { position: relative; height: 3px; background: #1a1505; border-radius: 2px; margin-top: 2px; }
+.party-cast-fill { height: 100%; background: linear-gradient(90deg, #c07018, #f09830); border-radius: 2px; transition: width 0.05s linear; }
+.party-cast-name { font-size: 7px; color: #f80; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
 
 #hint { font-size: 9px; color: #6a5a38; text-align: center; }
 
@@ -813,12 +823,12 @@ const SK = {
     }
   },
   w_sprint: {
-    name:'Sprint', icon:'💨', cost:5, cast:0, recharge:20,
+    name:'Sprint', icon:'💨', cost:5, cast:0, recharge:20, enchName:'sprint',
     desc:'+33% vitesse 14s',
     use(me, tgt, g) { addEnch(me, 'sprint', 14, g); }
   },
   w_frenzy: {
-    name:'Frénésie', icon:'😤', cost:5, cast:0, recharge:0, isToggle:true,
+    name:'Frénésie', icon:'😤', cost:5, cast:0, recharge:0, isToggle:true, enchName:'frenzy',
     desc:'×2 vitesse attaque, ×2 dégâts reçus',
     use(me, tgt, g) {
       if (hasEnch(me,'frenzy')) { removeEnch(me,'frenzy',g); g.log(`${me.name} désactive Frénésie`,'log-sys'); }
@@ -1199,7 +1209,7 @@ const SK = {
     }
   },
   w_rush: {
-    name:'Rush', icon:'💨', cost:5, cast:0, recharge:12,
+    name:'Rush', icon:'💨', cost:5, cast:0, recharge:12, enchName:'sprint',
     desc:'Vitesse +33% pendant 8s (annule Frénésie)',
     use(me, tgt, g) {
       if (hasEnch(me,'frenzy')) { delete me.enchantments.frenzy; g.log(`${me.name} annule Frénésie`,'log-sys'); }
@@ -1386,7 +1396,7 @@ const SK = {
     }
   },
   r_applypoison: {
-    name:'Application de Poison', icon:'☠️', cost:4, cast:0.5, recharge:12,
+    name:'Application de Poison', icon:'☠️', cost:4, cast:0.5, recharge:12, enchName:'apply_poison',
     desc:'Enchantement 12s: prochaines attaques empoisonnent',
     use(me, tgt, g) { addEnch(me,'apply_poison',12,g); g.log(`${me.name} prépare Poison`,'log-sys'); }
   },
@@ -1482,7 +1492,7 @@ const SK = {
     }
   },
   a_dash: {
-    name:'Esquive', icon:'💨', cost:5, cast:0, recharge:15,
+    name:'Esquive', icon:'💨', cost:5, cast:0, recharge:15, enchName:'dash',
     desc:'Vitesse +66% pendant 3s',
     use(me, tgt, g) { addEnch(me,'dash',3,g); g.log(`${me.name} esquive!`,'log-sys'); }
   },
@@ -1557,7 +1567,7 @@ const SK = {
 
   // ── DERVICHE ────────────────────────────────────────────────────
   d_avatarmelandru: {
-    name:'Avatar de Mélandru', icon:'🌿', cost:15, cast:2, recharge:30, range:0, elite:true,
+    name:'Avatar de Mélandru', icon:'🌿', cost:15, cast:2, recharge:30, range:0, elite:true, enchName:'avatar_melandru',
     desc:'[Élite] 20s: immunité aux conditions + attaques touchent 3 ennemis',
     use(me, tgt, g) {
       addEnch(me,'avatar_melandru',20,g); me.conditions={};
@@ -3354,13 +3364,21 @@ function render() {
     ctx.textAlign = 'center';
     ctx.fillText(c.name, c.x, cy - c.radius - 17);
 
-    // Condition dots
-    const conds = Object.keys(c.conditions);
-    for (let i = 0; i < conds.length; i++) {
-      const def = COND[conds[i]];
-      if (!def) continue;
+    // Condition and hex dots
+    const allStatus = [
+      ...Object.keys(c.conditions).map(n => ({ n, def: COND[n], isHex: false })),
+      ...Object.keys(c.hexes).map(n => ({ n, def: HEX[n], isHex: true })),
+    ].filter(x => x.def);
+    const totalDots = allStatus.length;
+    for (let i = 0; i < totalDots; i++) {
+      const { def, isHex } = allStatus[i];
+      const dotX = c.x - (totalDots - 1) * 5 + i * 10;
+      const dotY = cy + c.radius + 6;
       ctx.fillStyle = def.color;
-      ctx.beginPath(); ctx.arc(c.x - (conds.length-1)*5 + i*10, cy + c.radius + 6, 4, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(dotX, dotY, 4, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = isHex ? '#fff' : 'rgba(0,0,0,0.5)';
+      ctx.lineWidth = isHex ? 1 : 0.8;
+      ctx.beginPath(); ctx.arc(dotX, dotY, 4, 0, Math.PI*2); ctx.stroke();
     }
   }
 
@@ -3493,15 +3511,19 @@ function updateUI() {
     const row = document.createElement('div'); row.className = 'party-row';
     const hpP = clamp(c.hp / c.maxHp * 100, 0, 100);
     const enP = clamp(c.energy / c.maxEnergy * 100, 0, 100);
-    const condDots = Object.keys(c.conditions).map(n => {
-      const def = COND[n]; return def ? `<div class="mini-cond" title="${def.label}" style="background:${def.color}"></div>` : '';
-    }).join('');
+    const condDots = [
+      ...Object.keys(c.conditions).map(n => { const d = COND[n]; return d ? `<div class="mini-cond" title="${d.label} ${Math.ceil(c.conditions[n].duration)}s" style="background:${d.color}"></div>` : ''; }),
+      ...Object.keys(c.hexes).map(n => { const d = HEX[n]; return d ? `<div class="mini-cond" title="${d.label}" style="background:${d.color};outline:1px solid #fff"></div>` : ''; }),
+    ].join('');
+    const castPct = c.casting ? clamp(c.castTimer / c.casting.sk.cast * 100, 0, 100) : 0;
+    const castBarHtml = c.casting ? `<div class="party-cast-bar"><div class="party-cast-fill" style="width:${castPct}%"></div></div><div class="party-cast-name">${(c.casting.sk.name || '').slice(0, 14)}</div>` : '';
     row.innerHTML = `<div class="party-name" style="color:${c.alive ? '#bbb' : '#555'}">${c.alive ? '' : '☠ '}${CLASS_ICON[c.classKey] || ''} ${c.name}</div>
       <div class="bar-row">
         <div class="mini-bar"><div class="mini-bar-fill" style="width:${hpP}%;background:${hpP>50?'#4a4':hpP>25?'#aa4':'#a44'}"></div></div>
         <div class="mini-bar"><div class="mini-bar-fill" style="width:${enP}%;background:#44b"></div></div>
       </div>
-      <div class="mini-conds">${condDots}</div>`;
+      <div class="mini-conds">${condDots}</div>
+      ${castBarHtml}`;
     pl.appendChild(row);
   }
 
@@ -3560,6 +3582,16 @@ function updateUI() {
       else if (cd > 0) overlay.textContent = cd.toFixed(1);
       else overlay.textContent = '';
     }
+    // Enchantment active timer
+    const enchTimer = el.querySelector('.skill-ench-timer');
+    if (enchTimer && sk.enchName) {
+      const enchData = p.enchantments[sk.enchName];
+      const active = !!enchData;
+      el.classList.toggle('ench-active', active && cd <= 0);
+      if (active) {
+        enchTimer.textContent = enchData.duration > 900 ? '∞' : Math.ceil(enchData.duration) + 's';
+      }
+    }
     // Toggle active states
     if (skId === 'w_auto') el.classList.toggle('skill-toggle-active', p.autoAttack);
     if (skId === 'w_frenzy') el.classList.toggle('skill-toggle-active', hasEnch(p, 'frenzy'));
@@ -3580,7 +3612,8 @@ function buildSkillBar(p) {
       <span class="skill-key-txt">${i+1}</span>
       <div class="skill-icon">${sk.icon || '?'}</div>
       ${sk.cost > 0 ? `<span class="skill-cost-txt">${sk.cost}e</span>` : ''}
-      <div class="skill-cd-overlay"></div>`;
+      <div class="skill-cd-overlay"></div>
+      <div class="skill-ench-timer"></div>`;
     slot.addEventListener('click', () => useSkill(p, i));
     // Tooltip
     slot.addEventListener('mouseenter', ev => {
