@@ -230,6 +230,8 @@ canvas#arena { border: 2px solid #8a6428; cursor: crosshair; display: block; box
     </optgroup>
   </select>
   <button id="start-btn" onclick="startGame()">▶ Lancer</button>
+  <button id="sim-btn" onclick="triggerSim()" title="Simule 100 combats sans rendu et affiche les statistiques d'équilibre" style="margin-left:6px;background:#1a1200;border:1px solid #7a5820;color:#c8a050;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;">⚗ Simuler 100</button>
+  <a href="gw1_balance.html" target="_blank" style="margin-left:6px;background:#0a1220;border:1px solid #2a4060;color:#8ab;padding:6px 10px;border-radius:4px;font-size:12px;text-decoration:none;">⚖ Équilibrage</a>
 </div>
 
 <div id="game-container">
@@ -556,6 +558,39 @@ const HEX = {
   parasitic_bond:    { label:'Lien Parasitaire', color:'#4a4', dps:4 },
 };
 
+// ── BALANCE ──────────────────────────────────────────────────────
+// Multiplicateurs par classe / constantes globales. Éditables via gw1_balance.html
+// et persistés en localStorage sous la clé 'gwBalance'.
+const BALANCE = {
+  classes: {
+    warrior:      { hpMult:1, dmgMult:1, speedMult:1 },
+    monk:         { hpMult:1, dmgMult:1, healMult:1  },
+    elementalist: { hpMult:1, dmgMult:1 },
+    mesmer:       { hpMult:1, dmgMult:1 },
+    necro:        { hpMult:1, dmgMult:1 },
+    ranger:       { hpMult:1, dmgMult:1 },
+    assassin:     { hpMult:1, dmgMult:1, speedMult:1 },
+    ritualist:    { hpMult:1, dmgMult:1, healMult:1  },
+    dervish:      { hpMult:1, dmgMult:1 },
+    paragon:      { hpMult:1, dmgMult:1 },
+  },
+  global: {
+    armorDiv:   40,     // formule GW1 : dmg × 0.5^((armor−60)/armorDiv)
+    critChance: 0.17,
+    critMult:   1.5,
+    condDps:    { bleeding:3, burning:7, poison:4 },
+  },
+};
+try {
+  const ov = JSON.parse(localStorage.getItem('gwBalance') || '{}');
+  for (const [k, v] of Object.entries(ov.classes || {}))
+    if (BALANCE.classes[k]) Object.assign(BALANCE.classes[k], v);
+  Object.assign(BALANCE.global, ov.global || {});
+} catch(_) {}
+// Appliquer les dps de conditions depuis BALANCE
+for (const [n, dps] of Object.entries(BALANCE.global.condDps))
+  if (COND[n]) COND[n].dps = dps;
+
 // ── HELPERS ──────────────────────────────────────────────────────
 function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
@@ -623,16 +658,15 @@ function addHex(target, name, duration, game, source) {
 // damage formula: armor reduction (GW1-like)
 // Higher armor = lower multiplier = less damage taken
 function calcPhysDmg(attacker, target, lo, hi) {
-  const raw = rnd(lo, hi);
+  const raw = rnd(lo, hi) * ((BALANCE.classes[attacker.classKey] || {}).dmgMult || 1);
   const armor = Math.max(0, target.armor - (attacker.armorPen || 0));
-  return Math.max(1, Math.round(raw * Math.pow(0.5, (armor - 60) / 40)));
+  return Math.max(1, Math.round(raw * Math.pow(0.5, (armor - 60) / (BALANCE.global.armorDiv || 40))));
 }
 
 function calcSpellDmg(attacker, target, lo, hi) {
-  const raw = rnd(lo, hi) + (attacker.spellBonus || 0);
-  // Spells use target's armor but only 20% of bonus above 60 applies
+  const raw = (rnd(lo, hi) + (attacker.spellBonus || 0)) * ((BALANCE.classes[attacker.classKey] || {}).dmgMult || 1);
   const effectiveArmor = 60 + (target.armor - 60) * 0.2;
-  return Math.max(1, Math.round(raw * Math.pow(0.5, (effectiveArmor - 60) / 40)));
+  return Math.max(1, Math.round(raw * Math.pow(0.5, (effectiveArmor - 60) / (BALANCE.global.armorDiv || 40))));
 }
 
 function addFloat(g, x, y, text, color, size) {
@@ -1794,12 +1828,16 @@ const ENEMY_POOL = [
 
 // ── CREATION DE PERSONNAGE ──────────────────────────────────────
 function makeChar(build, team, x, y, isPlayer) {
+  const bal = BALANCE.classes[build.classKey] || {};
+  const hp  = Math.round(build.maxHp * (bal.hpMult || 1));
+  const spd = Math.round(build.speed  * (bal.speedMult || 1));
   return {
     ...build,
+    speed: spd, maxHp: hp,
     team, x, y, isPlayer: !!isPlayer,
     spawnX: x, spawnY: y,
-    hp: build.maxHp, energy: build.maxEnergy,
-    baseMaxHp: build.maxHp, baseMaxEnergy: build.maxEnergy,
+    hp, energy: build.maxEnergy,
+    baseMaxHp: hp, baseMaxEnergy: build.maxEnergy,
     bonusMaxHp: 0, dp: 0,
     conditions: {}, enchantments: {}, hexes: {},
     alive: true, isMoving: false,
@@ -2385,6 +2423,136 @@ function aiUpdate(c, dt, g) {
   }
   // auto attack
   c.autoAttack = d <= ar + 30;
+}
+
+// ── HEADLESS SIMULATOR ────────────────────────────────────────────
+function makeSimChar(build, team) {
+  const bal = BALANCE.classes[build.classKey] || {};
+  const hp = Math.round(build.maxHp * (bal.hpMult || 1));
+  return {
+    classKey: build.classKey, name: build.name || build.classKey,
+    team, alive: true, hp, maxHp: hp,
+    armor: build.armor, minDmg: build.minDmg, maxDmg: build.maxDmg,
+    attackSpeed: build.attackSpeed, spellBonus: build.spellBonus || 0,
+    healBonus: build.healBonus || 0, energyRegen: build.energyRegen || 2,
+    maxEnergy: build.maxEnergy, energy: build.maxEnergy,
+    attackTimer: Math.random() / build.attackSpeed,
+    spellTimer:  Math.random() * 2.5,
+    healTimer:   Math.random() * 1.8,
+  };
+}
+
+function simTick(chars, dt) {
+  const aDiv = BALANCE.global.armorDiv || 40;
+  const crit = BALANCE.global.critChance || 0.17;
+  const critM = BALANCE.global.critMult  || 1.5;
+  for (const c of chars) {
+    if (!c.alive) continue;
+    c.energy = Math.min(c.maxEnergy, c.energy + c.energyRegen * dt);
+    const foes = chars.filter(e => e.team !== c.team && e.alive);
+    const pals = chars.filter(f => f.team === c.team && f.alive && f !== c);
+    if (!foes.length) continue;
+    const tgt = foes.reduce((a, b) => a.hp < b.hp ? a : b);
+    const bal = BALANCE.classes[c.classKey] || {};
+    const dm  = bal.dmgMult || 1;
+
+    // Auto-attack
+    c.attackTimer += dt;
+    if (c.attackTimer >= 1 / c.attackSpeed) {
+      c.attackTimer -= 1 / c.attackSpeed;
+      let dmg = rnd(c.minDmg, c.maxDmg) * dm;
+      dmg *= Math.pow(0.5, (tgt.armor - 60) / aDiv);
+      if (Math.random() < crit) dmg *= critM;
+      tgt.hp = Math.max(0, tgt.hp - Math.max(1, dmg));
+      if (tgt.hp <= 0) tgt.alive = false;
+    }
+    // Spell burst (casters with spellBonus or high attack range)
+    if (c.spellBonus > 0) {
+      c.spellTimer += dt;
+      if (c.spellTimer >= 2.5) {
+        c.spellTimer = 0;
+        let dmg = (rnd(55, 80) + c.spellBonus) * dm;
+        const effArmor = 60 + (tgt.armor - 60) * 0.2;
+        dmg *= Math.pow(0.5, (effArmor - 60) / aDiv);
+        tgt.hp = Math.max(0, tgt.hp - Math.max(1, dmg));
+        if (tgt.hp <= 0) tgt.alive = false;
+      }
+    }
+    // Healer
+    if (c.healBonus > 0) {
+      c.healTimer += dt;
+      if (c.healTimer >= 1.8) {
+        c.healTimer = 0;
+        const w = [...pals, c].filter(x => x.alive && x.hp < x.maxHp).sort((a,b)=>(a.hp/a.maxHp)-(b.hp/b.maxHp))[0];
+        if (w) w.hp = Math.min(w.maxHp, w.hp + (70 + c.healBonus) * (bal.healMult || 1));
+      }
+    }
+  }
+}
+
+function runHeadlessSim(iterations) {
+  const res = { wins:[0,0], draws:0, durations:[], classDmg:{}, classHp:{} };
+  for (let i = 0; i < iterations; i++) {
+    const aH = shuffle(ALLY_POOL.filter(b => b.healBonus))[0];
+    const aD = shuffle(ALLY_POOL.filter(b => !b.healBonus));
+    const eH = shuffle(ENEMY_POOL.filter(b => b.healBonus || b.classKey==='monk' || b.classKey==='ritualist'))[0];
+    const eD = shuffle(ENEMY_POOL.filter(b => !b.healBonus && b.classKey!=='monk' && b.classKey!=='ritualist'));
+    const chars = [
+      ...[aH, aD[0], aD[1]].filter(Boolean).map(b => makeSimChar(b, 0)),
+      ...[eH, eD[0], eD[1], eD[2]].filter(Boolean).map(b => makeSimChar(b, 1)),
+    ];
+    const dt = 1/20; let ticks = 0; const maxT = 300*20;
+    while (ticks++ < maxT) {
+      simTick(chars, dt);
+      if (!chars.some(c=>c.team===0&&c.alive) || !chars.some(c=>c.team===1&&c.alive)) break;
+    }
+    const a0 = chars.some(c=>c.team===0&&c.alive);
+    const a1 = chars.some(c=>c.team===1&&c.alive);
+    if (a0 && !a1) res.wins[0]++; else if (a1 && !a0) res.wins[1]++; else res.draws++;
+    res.durations.push(ticks * dt);
+  }
+  res.durations.sort((a,b)=>a-b);
+  return res;
+}
+
+function showSimOverlay(results, n) {
+  let el = document.getElementById('sim-overlay');
+  if (!el) {
+    el = document.createElement('div'); el.id = 'sim-overlay';
+    el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:9999;display:flex;align-items:center;justify-content:center;';
+    document.body.appendChild(el);
+  }
+  const avgDur = results.durations.length ? (results.durations.reduce((a,b)=>a+b,0)/results.durations.length).toFixed(1) : '—';
+  const med = results.durations[Math.floor(results.durations.length/2)] || 0;
+  const wA = ((results.wins[0]/n)*100).toFixed(0), wE = ((results.wins[1]/n)*100).toFixed(0);
+  el.innerHTML = `<div style="background:#0e0903;border:1px solid #7a5820;border-radius:8px;padding:28px 36px;max-width:440px;color:#c8b896;font-family:sans-serif;">
+    <div style="font-size:18px;font-weight:bold;color:#e8b030;margin-bottom:16px;">⚗ Résultats — ${n} simulations</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div style="text-align:center;background:#0a0604;border:1px solid #2a4;border-radius:6px;padding:12px;">
+        <div style="font-size:30px;font-weight:bold;color:#4f4">${wA}%</div>
+        <div style="font-size:11px;color:#888;">Victoires alliés</div>
+      </div>
+      <div style="text-align:center;background:#0a0604;border:1px solid #a22;border-radius:6px;padding:12px;">
+        <div style="font-size:30px;font-weight:bold;color:#f55">${wE}%</div>
+        <div style="font-size:11px;color:#888;">Victoires ennemis</div>
+      </div>
+    </div>
+    <div style="font-size:12px;color:#888;margin-bottom:4px;">Durée moyenne : <b style="color:#bbb">${avgDur}s</b> &nbsp;|&nbsp; Médiane : <b style="color:#bbb">${med.toFixed(0)}s</b> &nbsp;|&nbsp; Nuls : <b style="color:#bbb">${results.draws}</b></div>
+    <div style="font-size:10px;color:#555;margin-bottom:16px;">Simulation simplifiée (sans IA, sans murs). Ouvrir gw1_balance.html pour le détail.</div>
+    <button onclick="document.getElementById('sim-overlay').remove()" style="background:#2a1800;border:1px solid #7a5820;color:#e8b030;padding:8px 20px;border-radius:4px;cursor:pointer;font-size:13px;">Fermer</button>
+  </div>`;
+  el.onclick = ev => { if (ev.target === el) el.remove(); };
+}
+
+function triggerSim() {
+  const btn = document.getElementById('sim-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Simulation…'; }
+  setTimeout(() => {
+    const results = runHeadlessSim(100);
+    if (btn) { btn.disabled = false; btn.textContent = '⚗ Simuler 100'; }
+    showSimOverlay(results, 100);
+    try { localStorage.setItem('gwSimResults', JSON.stringify({ ts: Date.now(), results, n:100 })); } catch(_) {}
+  }, 20);
 }
 
 function tryAiSkill(c, skId, g) {
