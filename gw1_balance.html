@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GW1 Balance Tool</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0b0908;color:#c8b896;font-family:system-ui,sans-serif;font-size:14px;line-height:1.5}
+a{color:#e8b030;text-decoration:none}a:hover{text-decoration:underline}
+h1{color:#e8b030;font-size:1.6em;margin-bottom:4px}
+h2{color:#e8b030;font-size:1.2em;margin:0 0 12px;border-bottom:1px solid #7a5820;padding-bottom:6px}
+.topbar{display:flex;align-items:center;gap:18px;padding:10px 18px;background:#140f0a;border-bottom:2px solid #7a5820}
+.topbar nav{display:flex;gap:14px;flex-wrap:wrap;font-size:13px}
+.topbar nav a{color:#c8b896;padding:2px 6px;border:1px solid #7a5820;border-radius:3px}
+.topbar nav a:hover{background:#1e1208;color:#e8b030;text-decoration:none}
+main{padding:18px;max-width:1200px;margin:0 auto}
+section{margin-bottom:36px}
+/* Tables */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#1a1008;color:#e8b030;padding:6px 8px;text-align:left;border:1px solid #7a5820;white-space:nowrap}
+td{padding:5px 8px;border:1px solid #3a2810;vertical-align:middle}
+tr:hover td{background:#120d06}
+/* Inputs */
+input[type=number],input[type=range],select{background:#1a1008;color:#c8b896;border:1px solid #7a5820;border-radius:3px;padding:2px 5px;font-size:13px}
+input[type=number]{width:70px}
+input[type=range]{width:140px;accent-color:#e8b030}
+input:disabled{opacity:0.4;cursor:not-allowed}
+/* Buttons */
+button{background:#1e1208;color:#e8b030;border:1px solid #7a5820;border-radius:3px;padding:4px 10px;cursor:pointer;font-size:13px}
+button:hover{background:#2a1a0a;border-color:#e8b030}
+.btn-small{padding:2px 7px;font-size:11px}
+.btn-primary{background:#2a1508;border-color:#e8b030;font-size:14px;padding:7px 18px}
+/* Global params */
+.global-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.param-row{display:flex;align-items:center;gap:10px;padding:8px 10px;background:#120d06;border:1px solid #3a2810;border-radius:4px}
+.param-label{flex:1;color:#c8b896}
+.param-val{width:36px;text-align:right;color:#e8b030;font-weight:bold}
+/* Analytics bars */
+.bar-wrap{height:12px;background:#1a1008;border-radius:2px;overflow:hidden;min-width:80px}
+.bar-fill{height:100%;border-radius:2px;transition:width .3s}
+/* Score cells */
+.score-hi{color:#0ff}
+.score-lo{color:#f55}
+/* Simulator */
+.sim-teams{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:14px}
+.team-box{background:#120d06;border:1px solid #7a5820;border-radius:4px;padding:12px}
+.team-box h3{color:#e8b030;margin-bottom:8px;font-size:1em}
+.slot-row{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.slot-row select{flex:1}
+.sim-options{display:flex;align-items:center;gap:16px;margin-bottom:14px}
+.sim-results{background:#120d06;border:1px solid #7a5820;border-radius:4px;padding:14px;display:none}
+.win-row{display:flex;gap:24px;align-items:center;margin-bottom:12px}
+.win-num{font-size:2.2em;font-weight:bold}
+.win-ally{color:#0ff}
+.win-enemy{color:#f55}
+.hist-wrap{display:flex;align-items:flex-end;gap:2px;height:60px;margin-top:6px}
+.hist-bar{flex:1;background:#e8b030;border-radius:2px 2px 0 0;min-width:12px}
+/* Save section */
+.save-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.flash{color:#0ff;font-weight:bold;display:none}
+#jsonOut{width:100%;height:180px;font-family:monospace;font-size:11px;background:#0b0908;color:#c8b896;border:1px solid #7a5820;border-radius:3px;display:none;margin-top:8px}
+.note{font-size:12px;color:#8a7055;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div>
+    <a href="gw1_pvp.html">← Retour au jeu</a>
+  </div>
+  <h1 style="margin:0">⚖ Balance &amp; Tuning</h1>
+  <nav>
+    <a href="#classes">Classes</a>
+    <a href="#global">Global</a>
+    <a href="#analytics">Analytique</a>
+    <a href="#simulator">Simulateur</a>
+    <a href="#save">Sauvegarder</a>
+  </nav>
+</div>
+<main>
+
+<!-- SECTION 1: Classes -->
+<section id="classes">
+  <h2>Paramètres des classes</h2>
+  <div style="overflow-x:auto">
+  <table id="classTable">
+    <thead>
+      <tr>
+        <th>Classe</th>
+        <th>PV base</th>
+        <th>Armure</th>
+        <th>Dmg min–max</th>
+        <th>Attaque/s</th>
+        <th>Portée</th>
+        <th>Mult PV</th>
+        <th>Mult Dmg</th>
+        <th>Mult Vitesse</th>
+        <th>Mult Soin</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="classBody"></tbody>
+  </table>
+  </div>
+</section>
+
+<!-- SECTION 2: Global -->
+<section id="global">
+  <h2>Paramètres globaux</h2>
+  <div class="global-grid">
+    <div class="param-row">
+      <span class="param-label">Diviseur d'armure <br><small style="color:#8a7055">dmg × 0.5<sup>((armor−60)/div)</sup></small></span>
+      <input type="range" id="armorDiv" min="20" max="80" step="1" value="40" oninput="syncSlider(this,'armorDivVal');debouncedRecalc()">
+      <span class="param-val" id="armorDivVal">40</span>
+    </div>
+    <div class="param-row">
+      <span class="param-label">Chance de critique (%)</span>
+      <input type="range" id="critChancePct" min="0" max="50" step="1" value="17" oninput="syncSlider(this,'critChanceVal');debouncedRecalc()">
+      <span class="param-val" id="critChanceVal">17</span>
+    </div>
+    <div class="param-row">
+      <span class="param-label">Multiplicateur critique</span>
+      <input type="range" id="critMultR" min="10" max="30" step="1" value="15" oninput="syncSlider(this,'critMultVal',0.1);debouncedRecalc()">
+      <span class="param-val" id="critMultVal">1.5</span>
+    </div>
+    <div class="param-row" style="flex-wrap:wrap;gap:6px">
+      <span class="param-label" style="width:100%">DPS conditions (par seconde)</span>
+      <label>Hémorra. <input type="number" id="condBleeding" value="3" min="0" max="20" step="0.5" style="width:55px" oninput="debouncedRecalc()"></label>
+      <label>Brûlure <input type="number" id="condBurning" value="7" min="0" max="30" step="0.5" style="width:55px" oninput="debouncedRecalc()"></label>
+      <label>Poison <input type="number" id="condPoison" value="4" min="0" max="20" step="0.5" style="width:55px" oninput="debouncedRecalc()"></label>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 3: Analytics -->
+<section id="analytics">
+  <h2>Analytique DPS / EHP</h2>
+  <div style="overflow-x:auto">
+  <table id="analyticsTable">
+    <thead>
+      <tr>
+        <th>Classe</th>
+        <th>Auto-DPS <small style="font-weight:normal">(cible A75)</small></th>
+        <th>Spell-DPS</th>
+        <th>DPS total estimé</th>
+        <th>EHP</th>
+        <th>Score offensif</th>
+        <th>Score défensif</th>
+      </tr>
+    </thead>
+    <tbody id="analyticsBody"></tbody>
+  </table>
+  </div>
+</section>
+
+<!-- SECTION 4: Simulator -->
+<section id="simulator">
+  <h2>Simulateur</h2>
+  <div class="sim-teams">
+    <div class="team-box">
+      <h3 style="color:#0ff">⚔ Équipe alliée (3 slots)</h3>
+      <div id="allySlots"></div>
+    </div>
+    <div class="team-box">
+      <h3 style="color:#f55">⚔ Équipe ennemie (4 slots)</h3>
+      <div id="enemySlots"></div>
+    </div>
+  </div>
+  <div class="sim-options">
+    <strong style="color:#e8b030">Itérations :</strong>
+    <label><input type="radio" name="iters" value="50"> 50</label>
+    <label><input type="radio" name="iters" value="100" checked> 100</label>
+    <label><input type="radio" name="iters" value="500"> 500</label>
+    <button class="btn-primary" onclick="launchSim()">▶ Lancer la simulation</button>
+  </div>
+  <div class="sim-results" id="simResults">
+    <div class="win-row">
+      <div>
+        <div style="color:#8a7055;font-size:12px">ALLIÉS</div>
+        <div class="win-num win-ally" id="winAlly">—</div>
+      </div>
+      <div style="font-size:1.4em;color:#7a5820">vs</div>
+      <div>
+        <div style="color:#8a7055;font-size:12px">ENNEMIS</div>
+        <div class="win-num win-enemy" id="winEnemy">—</div>
+      </div>
+      <div style="margin-left:auto;text-align:right">
+        <div style="color:#8a7055;font-size:12px">Durée moy.</div>
+        <div id="simDur" style="color:#e8b030;font-size:1.2em">—</div>
+      </div>
+    </div>
+    <div>
+      <div style="color:#8a7055;font-size:12px;margin-bottom:4px">Répartition des durées</div>
+      <div class="hist-wrap" id="simHist"></div>
+      <div id="simHistLabels" style="display:flex;gap:2px;font-size:10px;color:#8a7055;margin-top:2px"></div>
+    </div>
+    <div id="simSurvivors" style="margin-top:10px;font-size:12px;color:#8a7055"></div>
+  </div>
+</section>
+
+<!-- SECTION 5: Save -->
+<section id="save">
+  <h2>Sauvegarder / Exporter</h2>
+  <div class="save-row">
+    <button class="btn-primary" onclick="saveBalance()">💾 Sauvegarder</button>
+    <span class="flash" id="savedFlash">Sauvegardé !</span>
+    <button onclick="resetBalance()">↺ Réinitialiser</button>
+    <button onclick="toggleJson()">{ } Afficher JSON</button>
+  </div>
+  <textarea id="jsonOut" readonly></textarea>
+  <p class="note">Les paramètres sauvegardés sont automatiquement chargés par gw1_pvp.html au démarrage.</p>
+</section>
+
+</main>
+<script>
+// ─── Base data ────────────────────────────────────────────────────────────────
+const BASE = {
+  warrior:      { classKey:'warrior',      icon:'⚔', maxHp:560, armor:88, speed:100, minDmg:20, maxDmg:28, attackRange:130, attackSpeed:1.33, spellBonus:0,  healBonus:0  },
+  monk:         { classKey:'monk',         icon:'✚', maxHp:480, armor:70, speed:100, minDmg:10, maxDmg:15, attackRange:130, attackSpeed:1.0,  spellBonus:0,  healBonus:25 },
+  elementalist: { classKey:'elementalist', icon:'◆', maxHp:420, armor:65, speed:100, minDmg:8,  maxDmg:12, attackRange:600, attackSpeed:0.8,  spellBonus:15, healBonus:0  },
+  mesmer:       { classKey:'mesmer',       icon:'⊗', maxHp:450, armor:65, speed:100, minDmg:8,  maxDmg:12, attackRange:500, attackSpeed:0.8,  spellBonus:10, healBonus:0  },
+  necro:        { classKey:'necro',        icon:'☠', maxHp:440, armor:65, speed:100, minDmg:8,  maxDmg:12, attackRange:500, attackSpeed:0.8,  spellBonus:10, healBonus:0  },
+  ranger:       { classKey:'ranger',       icon:'➶', maxHp:460, armor:75, speed:105, minDmg:16, maxDmg:22, attackRange:380, attackSpeed:1.0,  spellBonus:0,  healBonus:0  },
+  assassin:     { classKey:'assassin',     icon:'⚡', maxHp:440, armor:70, speed:110, minDmg:18, maxDmg:26, attackRange:130, attackSpeed:1.5,  spellBonus:0,  healBonus:0  },
+  ritualist:    { classKey:'ritualist',    icon:'⌾', maxHp:460, armor:65, speed:100, minDmg:10, maxDmg:15, attackRange:130, attackSpeed:0.9,  spellBonus:0,  healBonus:15 },
+  dervish:      { classKey:'dervish',      icon:'◎', maxHp:520, armor:80, speed:105, minDmg:22, maxDmg:34, attackRange:160, attackSpeed:1.2,  spellBonus:0,  healBonus:0  },
+  paragon:      { classKey:'paragon',      icon:'♦', maxHp:480, armor:75, speed:100, minDmg:14, maxDmg:20, attackRange:400, attackSpeed:1.0,  spellBonus:0,  healBonus:0  },
+};
+const CLASS_COLOR = { warrior:'#e8873a', monk:'#88ffcc', elementalist:'#ff88aa', mesmer:'#cc88ff', necro:'#aa6688', ranger:'#cccc44', assassin:'#6688cc', ritualist:'#88ccaa', dervish:'#ddaa44', paragon:'#ffcc66' };
+const CLASS_ORDER = ['warrior','monk','elementalist','mesmer','necro','ranger','assassin','ritualist','dervish','paragon'];
+const CLASS_LABEL = { warrior:'Guerrier', monk:'Moine', elementalist:'Élémentaliste', mesmer:'Mesmer', necro:'Nécromant', ranger:'Rôdeur', assassin:'Assassin', ritualist:'Ritualiste', dervish:'Derviche', paragon:'Paragone' };
+
+const BUILDS_SIM = [
+  { label:'Guerrier (Éviscération)', classKey:'warrior',      maxHp:560, armor:88, minDmg:20, maxDmg:28, attackSpeed:1.33, spellBonus:0,  healBonus:0  },
+  { label:'Guerrier (Marteau)',      classKey:'warrior',      maxHp:560, armor:88, minDmg:24, maxDmg:34, attackSpeed:1.0,  spellBonus:0,  healBonus:0  },
+  { label:'Moine (WoH)',             classKey:'monk',         maxHp:480, armor:70, minDmg:10, maxDmg:15, attackSpeed:1.0,  spellBonus:0,  healBonus:25 },
+  { label:'Moine (Prot)',            classKey:'monk',         maxHp:480, armor:70, minDmg:10, maxDmg:15, attackSpeed:1.0,  spellBonus:0,  healBonus:20 },
+  { label:'Élémentaliste (Feu)',     classKey:'elementalist', maxHp:420, armor:65, minDmg:8,  maxDmg:12, attackSpeed:0.8,  spellBonus:15, healBonus:0  },
+  { label:'Mesmer',                  classKey:'mesmer',       maxHp:450, armor:65, minDmg:8,  maxDmg:12, attackSpeed:0.8,  spellBonus:10, healBonus:0  },
+  { label:'Rôdeur (Burning)',        classKey:'ranger',       maxHp:460, armor:75, minDmg:16, maxDmg:22, attackSpeed:1.0,  spellBonus:0,  healBonus:0  },
+  { label:'Assassin',                classKey:'assassin',     maxHp:440, armor:70, minDmg:18, maxDmg:26, attackSpeed:1.5,  spellBonus:0,  healBonus:0  },
+  { label:'Ritualiste (Resto)',      classKey:'ritualist',    maxHp:460, armor:65, minDmg:10, maxDmg:15, attackSpeed:0.9,  spellBonus:0,  healBonus:20 },
+  { label:'Derviche',                classKey:'dervish',      maxHp:520, armor:80, minDmg:22, maxDmg:34, attackSpeed:1.2,  spellBonus:0,  healBonus:0  },
+  { label:'Paragone',                classKey:'paragon',      maxHp:480, armor:75, minDmg:14, maxDmg:20, attackSpeed:1.0,  spellBonus:0,  healBonus:0  },
+];
+
+// ─── BAL state ────────────────────────────────────────────────────────────────
+function defaultBAL() {
+  const classes = {};
+  CLASS_ORDER.forEach(k => { classes[k] = { hpMult:1, dmgMult:1, speedMult:1, healMult:1 }; });
+  return { classes, global: { armorDiv:40, critChance:0.17, critMult:1.5, condDps:{ bleeding:3, burning:7, poison:4 } } };
+}
+let BAL = defaultBAL();
+try {
+  const saved = localStorage.getItem('gwBalance');
+  if (saved) BAL = JSON.parse(saved);
+} catch(e) {}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function syncSlider(el, valId, scale) {
+  const v = scale ? (el.value * scale).toFixed(1) : el.value;
+  document.getElementById(valId).textContent = v;
+}
+let _debTimer = null;
+function debouncedRecalc() {
+  clearTimeout(_debTimer);
+  _debTimer = setTimeout(recalcAll, 100);
+}
+
+// ─── Read BAL from UI ─────────────────────────────────────────────────────────
+function readBALfromUI() {
+  BAL.global.armorDiv    = +document.getElementById('armorDiv').value;
+  BAL.global.critChance  = +document.getElementById('critChancePct').value / 100;
+  BAL.global.critMult    = +document.getElementById('critMultR').value / 10;
+  BAL.global.condDps.bleeding = +document.getElementById('condBleeding').value;
+  BAL.global.condDps.burning  = +document.getElementById('condBurning').value;
+  BAL.global.condDps.poison   = +document.getElementById('condPoison').value;
+  CLASS_ORDER.forEach(k => {
+    BAL.classes[k].hpMult    = +document.getElementById('hp_'+k).value;
+    BAL.classes[k].dmgMult   = +document.getElementById('dmg_'+k).value;
+    BAL.classes[k].speedMult = +document.getElementById('spd_'+k).value;
+    const healEl = document.getElementById('heal_'+k);
+    BAL.classes[k].healMult = healEl.disabled ? 1 : +healEl.value;
+  });
+}
+
+// ─── Build class table ────────────────────────────────────────────────────────
+function buildClassTable() {
+  const tbody = document.getElementById('classBody');
+  tbody.innerHTML = '';
+  CLASS_ORDER.forEach(k => {
+    const b = BASE[k];
+    const bc = BAL.classes[k];
+    const color = CLASS_COLOR[k];
+    const hasHeal = b.healBonus > 0;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="color:${color};white-space:nowrap">${b.icon} ${CLASS_LABEL[k]}</td>
+      <td>${b.maxHp}</td>
+      <td>${b.armor}</td>
+      <td>${b.minDmg}–${b.maxDmg}</td>
+      <td>${b.attackSpeed.toFixed(2)}</td>
+      <td>${b.attackRange}</td>
+      <td><input type="number" id="hp_${k}"  value="${bc.hpMult}"    min="0.5" max="2" step="0.05" oninput="debouncedRecalc()"></td>
+      <td><input type="number" id="dmg_${k}" value="${bc.dmgMult}"   min="0.5" max="2" step="0.05" oninput="debouncedRecalc()"></td>
+      <td><input type="number" id="spd_${k}" value="${bc.speedMult}" min="0.5" max="2" step="0.05" oninput="debouncedRecalc()"></td>
+      <td><input type="number" id="heal_${k}" value="${bc.healMult}"  min="0.5" max="2" step="0.05" ${hasHeal?'':'disabled'} oninput="debouncedRecalc()"></td>
+      <td><button class="btn-small" onclick="resetRow('${k}')">↺</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function resetRow(k) {
+  BAL.classes[k] = { hpMult:1, dmgMult:1, speedMult:1, healMult:1 };
+  document.getElementById('hp_'+k).value    = 1;
+  document.getElementById('dmg_'+k).value   = 1;
+  document.getElementById('spd_'+k).value   = 1;
+  document.getElementById('heal_'+k).value  = 1;
+  recalcAll();
+}
+
+// ─── Analytics ────────────────────────────────────────────────────────────────
+const TARGET_ARMOR = 75;
+const ATTACKER_ARMOR = 88;
+
+function armorFactor(armor, armorDiv) {
+  return Math.pow(0.5, (armor - 60) / armorDiv);
+}
+
+function calcAutoDPS(b, bc, g) {
+  const avgDmg = (b.minDmg + b.maxDmg) / 2;
+  const af = armorFactor(TARGET_ARMOR, g.armorDiv);
+  const critBonus = 1 + g.critChance * (g.critMult - 1);
+  return avgDmg * bc.dmgMult * af * b.attackSpeed * critBonus;
+}
+
+function calcSpellDPS(b, bc, g) {
+  if (!b.spellBonus) return null;
+  const base = b.spellBonus;
+  const af = armorFactor(TARGET_ARMOR, g.armorDiv);
+  return base * bc.dmgMult * af * b.attackSpeed;
+}
+
+function calcEHP(b, bc, g) {
+  const hp = b.maxHp * bc.hpMult;
+  const incomingAF = armorFactor(b.armor, g.armorDiv);
+  return hp / incomingAF;
+}
+
+function recalcAll() {
+  readBALfromUI();
+  const g = BAL.global;
+  const rows = CLASS_ORDER.map(k => {
+    const b = BASE[k];
+    const bc = BAL.classes[k];
+    const auto = calcAutoDPS(b, bc, g);
+    const spell = calcSpellDPS(b, bc, g);
+    const total = auto + (spell || 0);
+    const ehp = calcEHP(b, bc, g);
+    return { k, auto, spell, total, ehp };
+  });
+  const avgTotal = rows.reduce((s,r) => s+r.total, 0) / rows.length;
+  const avgEHP   = rows.reduce((s,r) => s+r.ehp,   0) / rows.length;
+  const maxTotal = Math.max(...rows.map(r => r.total));
+  const maxEHP   = Math.max(...rows.map(r => r.ehp));
+
+  const tbody = document.getElementById('analyticsBody');
+  tbody.innerHTML = '';
+  rows.forEach(r => {
+    const b = BASE[r.k];
+    const color = CLASS_COLOR[r.k];
+    const scoreDps = Math.round(r.total / avgTotal * 100);
+    const scoreEhp = Math.round(r.ehp   / avgEHP   * 100);
+    const dpsBarW  = Math.round(r.total / maxTotal * 100);
+    const ehpBarW  = Math.round(r.ehp   / maxEHP   * 100);
+    const dpsScore = scoreDps >= 110 ? 'score-hi' : scoreDps <= 90 ? 'score-lo' : '';
+    const ehpScore = scoreEhp >= 110 ? 'score-hi' : scoreEhp <= 90 ? 'score-lo' : '';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="color:${color};white-space:nowrap">${b.icon} ${CLASS_LABEL[r.k]}</td>
+      <td>
+        <span style="display:inline-block;width:42px">${r.auto.toFixed(1)}</span>
+        <div class="bar-wrap" style="display:inline-block;width:80px;vertical-align:middle">
+          <div class="bar-fill" style="width:${dpsBarW}%;background:${color}"></div>
+        </div>
+      </td>
+      <td>${r.spell !== null ? r.spell.toFixed(1) : '—'}</td>
+      <td><strong style="color:#e8b030">${r.total.toFixed(1)}</strong></td>
+      <td>
+        <span style="display:inline-block;width:48px">${Math.round(r.ehp)}</span>
+        <div class="bar-wrap" style="display:inline-block;width:80px;vertical-align:middle">
+          <div class="bar-fill" style="width:${ehpBarW}%;background:${color}"></div>
+        </div>
+      </td>
+      <td class="${dpsScore}">${scoreDps}</td>
+      <td class="${ehpScore}">${scoreEhp}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ─── Simulator ────────────────────────────────────────────────────────────────
+function buildSimDropdowns() {
+  const allyDiv  = document.getElementById('allySlots');
+  const enemyDiv = document.getElementById('enemySlots');
+  allyDiv.innerHTML  = '';
+  enemyDiv.innerHTML = '';
+
+  const makeSelect = () => {
+    const sel = document.createElement('select');
+    const opt0 = document.createElement('option');
+    opt0.value = '-1'; opt0.textContent = '🎲 Aléatoire';
+    sel.appendChild(opt0);
+    BUILDS_SIM.forEach((b,i) => {
+      const opt = document.createElement('option');
+      opt.value = String(i);
+      opt.textContent = b.label;
+      sel.appendChild(opt);
+    });
+    return sel;
+  };
+
+  for (let i = 0; i < 3; i++) {
+    const row = document.createElement('div');
+    row.className = 'slot-row';
+    const lbl = document.createElement('span');
+    lbl.style.cssText = 'width:18px;color:#8a7055';
+    lbl.textContent = (i+1);
+    row.appendChild(lbl);
+    const sel = makeSelect();
+    sel.id = 'ally_' + i;
+    row.appendChild(sel);
+    allyDiv.appendChild(row);
+  }
+  for (let i = 0; i < 4; i++) {
+    const row = document.createElement('div');
+    row.className = 'slot-row';
+    const lbl = document.createElement('span');
+    lbl.style.cssText = 'width:18px;color:#8a7055';
+    lbl.textContent = (i+1);
+    row.appendChild(lbl);
+    const sel = makeSelect();
+    sel.id = 'enemy_' + i;
+    row.appendChild(sel);
+    enemyDiv.appendChild(row);
+  }
+}
+
+function getSimBuild(selectId) {
+  const val = +document.getElementById(selectId).value;
+  if (val < 0) return BUILDS_SIM[Math.floor(Math.random() * BUILDS_SIM.length)];
+  return BUILDS_SIM[val];
+}
+
+// ─── Sim engine ───────────────────────────────────────────────────────────────
+function makeChar(build) {
+  const bc = BAL.classes[build.classKey] || { hpMult:1, dmgMult:1, speedMult:1, healMult:1 };
+  return {
+    hp: build.maxHp * bc.hpMult,
+    maxHp: build.maxHp * bc.hpMult,
+    armor: build.armor,
+    minDmg: build.minDmg,
+    maxDmg: build.maxDmg,
+    attackSpeed: build.attackSpeed * (bc.speedMult || 1),
+    spellBonus: build.spellBonus || 0,
+    healBonus: build.healBonus || 0,
+    healMult: bc.healMult || 1,
+    atkTimer: Math.random() / (build.attackSpeed * (bc.speedMult || 1)),
+    spellTimer: 0,
+    alive: true,
+    dmgDealt: 0,
+    healDone: 0,
+  };
+}
+
+function simTick(team0, team1, dt) {
+  const g = BAL.global;
+  const allAlive0 = team0.filter(c => c.alive);
+  const allAlive1 = team1.filter(c => c.alive);
+  if (!allAlive0.length || !allAlive1.length) return;
+
+  const attack = (attacker, targets) => {
+    const alive = targets.filter(t => t.alive);
+    if (!alive.length) return;
+    const target = alive[Math.floor(Math.random() * alive.length)];
+    const rawDmg = attacker.minDmg + Math.random() * (attacker.maxDmg - attacker.minDmg);
+    const dmgMult = BAL.classes[attacker.classKey] ? BAL.classes[attacker.classKey].dmgMult : 1;
+    const af = armorFactor(target.armor, g.armorDiv);
+    let dmg = rawDmg * dmgMult * af;
+    if (Math.random() < g.critChance) dmg *= g.critMult;
+    target.hp -= dmg;
+    attacker.dmgDealt += dmg;
+    if (target.hp <= 0) target.alive = false;
+  };
+
+  const heal = (healer, teammates) => {
+    const wounded = teammates.filter(t => t.alive && t.hp < t.maxHp * 0.85);
+    if (!wounded.length) return;
+    const target = wounded.reduce((a,b) => a.hp < b.hp ? a : b);
+    const h = healer.healBonus * healer.healMult * (0.8 + Math.random() * 0.4);
+    target.hp = Math.min(target.maxHp, target.hp + h);
+    healer.healDone += h;
+  };
+
+  const spell = (caster, targets, teammates) => {
+    const alive = targets.filter(t => t.alive);
+    if (!alive.length) return;
+    const target = alive[Math.floor(Math.random() * alive.length)];
+    const dmgMult = BAL.classes[caster.classKey] ? BAL.classes[caster.classKey].dmgMult : 1;
+    const af = armorFactor(target.armor, g.armorDiv);
+    const dmg = caster.spellBonus * dmgMult * af * (0.8 + Math.random() * 0.4);
+    target.hp -= dmg;
+    caster.dmgDealt += dmg;
+    if (target.hp <= 0) target.alive = false;
+  };
+
+  const tickTeam = (team, enemies, allies) => {
+    team.forEach(c => {
+      if (!c.alive) return;
+      c.atkTimer -= dt;
+      if (c.atkTimer <= 0) {
+        c.atkTimer = 1 / c.attackSpeed;
+        if (c.healBonus > 0) {
+          heal(c, allies);
+        } else {
+          attack(c, enemies);
+        }
+      }
+      if (c.spellBonus > 0) {
+        c.spellTimer -= dt;
+        if (c.spellTimer <= 0) {
+          c.spellTimer = 2 + Math.random() * 2;
+          spell(c, enemies, allies);
+        }
+      }
+    });
+  };
+
+  tickTeam(allAlive0, allAlive1, team0);
+  tickTeam(allAlive1, allAlive0, team1);
+}
+
+function runOneSim(builds0, builds1) {
+  const team0 = builds0.map(b => { const c = makeChar(b); c.classKey = b.classKey; return c; });
+  const team1 = builds1.map(b => { const c = makeChar(b); c.classKey = b.classKey; return c; });
+  const DT = 0.05;
+  const MAX_T = 120;
+  let t = 0;
+  while (t < MAX_T) {
+    simTick(team0, team1, DT);
+    const a0 = team0.filter(c => c.alive).length;
+    const a1 = team1.filter(c => c.alive).length;
+    if (!a0 || !a1) break;
+    t += DT;
+  }
+  const survivors0 = team0.filter(c => c.alive).length;
+  const survivors1 = team1.filter(c => c.alive).length;
+  let winner = -1;
+  if (survivors0 > 0 && survivors1 === 0) winner = 0;
+  else if (survivors1 > 0 && survivors0 === 0) winner = 1;
+  return { winner, duration: t, survivors0, survivors1 };
+}
+
+function runSim(builds0, builds1, iterations) {
+  const wins = [0, 0];
+  let draws = 0;
+  const durations = [];
+  let totSurv0 = 0, totSurv1 = 0;
+  for (let i = 0; i < iterations; i++) {
+    const r = runOneSim(builds0, builds1);
+    if (r.winner === 0) wins[0]++;
+    else if (r.winner === 1) wins[1]++;
+    else draws++;
+    durations.push(r.duration);
+    totSurv0 += r.survivors0;
+    totSurv1 += r.survivors1;
+  }
+  const avgDur = durations.reduce((a,b) => a+b, 0) / durations.length;
+  const varDur = durations.reduce((a,d) => a + (d-avgDur)**2, 0) / durations.length;
+  const stdDur = Math.sqrt(varDur);
+  return { wins, draws, durations, avgDur, stdDur,
+    avgSurv0: totSurv0/iterations, avgSurv1: totSurv1/iterations };
+}
+
+function launchSim() {
+  readBALfromUI();
+  const iters = +document.querySelector('input[name="iters"]:checked').value;
+
+  const builds0 = [0,1,2].map(i => getSimBuild('ally_'+i));
+  const builds1 = [0,1,2,3].map(i => getSimBuild('enemy_'+i));
+
+  const btn = document.querySelector('button.btn-primary');
+  btn.textContent = '⏳ En cours…';
+  btn.disabled = true;
+
+  setTimeout(() => {
+    const res = runSim(builds0, builds1, iters);
+    renderSimResults(res, iters);
+    btn.textContent = '▶ Lancer la simulation';
+    btn.disabled = false;
+  }, 20);
+}
+
+function renderSimResults(res, iters) {
+  const pct = v => (v / iters * 100).toFixed(1) + '%';
+  document.getElementById('winAlly').textContent  = pct(res.wins[0]);
+  document.getElementById('winEnemy').textContent = pct(res.wins[1]);
+  document.getElementById('simDur').textContent   = res.avgDur.toFixed(1) + 's ± ' + res.stdDur.toFixed(1) + 's';
+
+  // Histogram
+  const durs = res.durations;
+  const minD = Math.min(...durs), maxD = Math.max(...durs);
+  const range = maxD - minD || 1;
+  const BINS = 10;
+  const counts = new Array(BINS).fill(0);
+  durs.forEach(d => {
+    const bi = Math.min(BINS-1, Math.floor((d - minD) / range * BINS));
+    counts[bi]++;
+  });
+  const maxC = Math.max(...counts) || 1;
+  const hist = document.getElementById('simHist');
+  const hlbl = document.getElementById('simHistLabels');
+  hist.innerHTML = '';
+  hlbl.innerHTML = '';
+  counts.forEach((c, i) => {
+    const bar = document.createElement('div');
+    bar.className = 'hist-bar';
+    bar.style.height = Math.round(c / maxC * 100) + '%';
+    bar.title = `${(minD + i*range/BINS).toFixed(0)}–${(minD + (i+1)*range/BINS).toFixed(0)}s : ${c}`;
+    hist.appendChild(bar);
+    const lbl = document.createElement('div');
+    lbl.style.cssText = 'flex:1;text-align:center;overflow:hidden';
+    lbl.textContent = (i===0||i===BINS-1) ? Math.round(minD + i*range/BINS)+'s' : '';
+    hlbl.appendChild(lbl);
+  });
+
+  document.getElementById('simSurvivors').textContent =
+    `Survivants moyens — Alliés: ${res.avgSurv0.toFixed(1)} / Ennemis: ${res.avgSurv1.toFixed(1)}  |  Nuls: ${res.draws}`;
+
+  document.getElementById('simResults').style.display = 'block';
+}
+
+// ─── Save / Reset / JSON ─────────────────────────────────────────────────────
+function saveBalance() {
+  readBALfromUI();
+  localStorage.setItem('gwBalance', JSON.stringify(BAL));
+  const fl = document.getElementById('savedFlash');
+  fl.style.display = 'inline';
+  setTimeout(() => { fl.style.display = 'none'; }, 2000);
+}
+
+function resetBalance() {
+  BAL = defaultBAL();
+  // Reload global sliders
+  document.getElementById('armorDiv').value = 40;
+  document.getElementById('armorDivVal').textContent = '40';
+  document.getElementById('critChancePct').value = 17;
+  document.getElementById('critChanceVal').textContent = '17';
+  document.getElementById('critMultR').value = 15;
+  document.getElementById('critMultVal').textContent = '1.5';
+  document.getElementById('condBleeding').value = 3;
+  document.getElementById('condBurning').value  = 7;
+  document.getElementById('condPoison').value   = 4;
+  buildClassTable();
+  recalcAll();
+  document.getElementById('jsonOut').style.display = 'none';
+}
+
+function toggleJson() {
+  readBALfromUI();
+  const el = document.getElementById('jsonOut');
+  if (el.style.display === 'none') {
+    el.value = JSON.stringify(BAL, null, 2);
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+function init() {
+  // Sync global sliders to BAL
+  document.getElementById('armorDiv').value     = BAL.global.armorDiv;
+  document.getElementById('armorDivVal').textContent = BAL.global.armorDiv;
+  document.getElementById('critChancePct').value = Math.round(BAL.global.critChance * 100);
+  document.getElementById('critChanceVal').textContent = Math.round(BAL.global.critChance * 100);
+  document.getElementById('critMultR').value    = Math.round(BAL.global.critMult * 10);
+  document.getElementById('critMultVal').textContent = BAL.global.critMult.toFixed(1);
+  document.getElementById('condBleeding').value = BAL.global.condDps.bleeding;
+  document.getElementById('condBurning').value  = BAL.global.condDps.burning;
+  document.getElementById('condPoison').value   = BAL.global.condDps.poison;
+  buildClassTable();
+  recalcAll();
+  buildSimDropdowns();
+}
+
+init();
+</script>
+</body>
+</html>
