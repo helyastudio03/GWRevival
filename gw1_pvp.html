@@ -1333,14 +1333,14 @@ const SK = {
   },
   e_rodgorts: {
     name:'Invocation de Rodgort', icon:'🌋', cost:15, cast:2, recharge:20, range:500,
-    desc:'AoE feu + Brûlure 7s sur tout le monde dans la zone',
+    desc:'AoE feu + Brûlure 5s sur tout le monde dans la zone',
     use(me, tgt, g) {
       if (!tgt) return;
       const tx=tgt.x, ty=tgt.y;
       spawnProj(g,me,tx,ty,'#f60',350,()=>{
-        spawnFx(g,tx,ty,'#f40',180,0.9);
+        spawnFx(g,tx,ty,'#f40',150,0.9);
         for(const e of getEnemies(me,g)){
-          if(dist({x:tx,y:ty},e)<180){ const d=calcSpellDmg(me,e,90,110,'fire'); dealDmg(me,e,d,'feu',g); addCond(e,'burning',7,g); }
+          if(dist({x:tx,y:ty},e)<150){ const d=calcSpellDmg(me,e,70,90,'fire'); dealDmg(me,e,d,'feu',g); addCond(e,'burning',5,g); }
         }
       });
       g.log(`${me.name} lance Invocation de Rodgort!`,'log-dmg');
@@ -1435,13 +1435,15 @@ const SK = {
     use(me, tgt, g) { addEnch(me,'apply_poison',12,g); g.log(`${me.name} prépare Poison`,'log-sys'); }
   },
   r_barrage: {
-    name:'Barrage', icon:'🏹', cost:5, cast:0, recharge:3, range:500,
-    desc:'Frappe tous les ennemis dans la direction de la cible',
+    name:'Barrage', icon:'🏹', cost:5, cast:0, recharge:5, range:500,
+    desc:'Frappe jusqu\'à 3 ennemis à portée',
     use(me, tgt, g) {
       if (!tgt || !isEnemy(me,tgt)) return;
       let hit=0;
-      for(const e of getEnemies(me,g)){
-        if(dist(me,e)<=500){ const d=calcPhysDmg(me,e,12,18); dealDmg(me,e,d,'physique',g); hit++; }
+      const sorted = getEnemies(me,g).filter(e=>dist(me,e)<=500).sort((a,b)=>dist(me,a)-dist(me,b));
+      for(const e of sorted){
+        if(hit>=3) break;
+        const d=calcPhysDmg(me,e,12,18); dealDmg(me,e,d,'physique',g); hit++;
       }
       spawnFx(g,me.x,me.y,'#ca4',200,0.4);
       g.log(`${me.name} Barrage — ${hit} cibles!`,'log-dmg');
@@ -1499,7 +1501,7 @@ const SK = {
       if (!tgt || !isEnemy(me,tgt)) return;
       if (hasCond(me,'blind')&&Math.random()<0.9) return;
       for(const e of getEnemies(me,g)){
-        if(dist(me,e)<160){ const d=calcPhysDmg(me,e,28,40); dealDmg(me,e,d,'physique',g); }
+        if(dist(me,e)<160){ const d=calcPhysDmg(me,e,22,32); dealDmg(me,e,d,'physique',g); }
       }
       spawnFx(g,me.x,me.y,'#f8a',180,0.5); me._lastAttackType=null;
     }
@@ -1510,7 +1512,7 @@ const SK = {
     use(me, tgt, g) {
       if (!tgt || !isEnemy(me,tgt)) return;
       if (hasCond(me,'blind')&&Math.random()<0.9) return;
-      const d=calcPhysDmg(me,tgt,35,50); dealDmg(me,tgt,d,'physique',g);
+      const d=calcPhysDmg(me,tgt,28,40); dealDmg(me,tgt,d,'physique',g);
       addCond(tgt,'bleeding',15,g); addCond(tgt,'deepwound',15,g);
       me._lastAttackType=null;
     }
@@ -1520,7 +1522,7 @@ const SK = {
     desc:'[Élite] Coup critique garanti + regain d\'énergie',
     use(me, tgt, g) {
       if (!tgt || !isEnemy(me,tgt)) return;
-      const d=calcPhysDmg(me,tgt,40,56); dealDmg(me,tgt,d,'physique',g);
+      const d=calcPhysDmg(me,tgt,32,44); dealDmg(me,tgt,d,'physique',g);
       me.energy=Math.min(me.maxEnergy,me.energy+8);
       spawnFx(g,tgt.x,tgt.y,'#ff0',55,0.4);
     }
@@ -1634,11 +1636,11 @@ const SK = {
   },
   d_piousassault: {
     name:'Assaut Pieux', icon:'💥', cost:5, cast:0, recharge:8, range:160,
-    desc:'Frappe +50 dégâts, supprime un enchantement sur soi',
+    desc:'Frappe +dégâts, supprime un enchantement sur soi',
     use(me, tgt, g) {
       if (!tgt || !isEnemy(me,tgt)) return;
       if (hasCond(me,'blind')&&Math.random()<0.9) return;
-      const d=calcPhysDmg(me,tgt,40,58); dealDmg(me,tgt,d,'physique',g);
+      const d=calcPhysDmg(me,tgt,32,46); dealDmg(me,tgt,d,'physique',g);
       const enchs=Object.keys(me.enchantments);
       if(enchs.length>0){ delete me.enchantments[enchs[0]]; }
     }
@@ -1742,7 +1744,7 @@ const BASE = {
   ranger:       { classKey:'ranger',       color:'#cccc44', radius:17, maxHp:460, maxEnergy:25, energyRegen:3, armor:75, speed:105, minDmg:16, maxDmg:22, attackRange:380,  attackSpeed:1.0  },
   assassin:     { classKey:'assassin',     color:'#6688cc', radius:16, maxHp:440, maxEnergy:30, energyRegen:3, armor:70, speed:110, minDmg:18, maxDmg:26, attackRange:130,  attackSpeed:1.5  },
   ritualist:    { classKey:'ritualist',    color:'#88ccaa', radius:16, maxHp:460, maxEnergy:35, energyRegen:4, armor:65, speed:100, minDmg:10, maxDmg:15, attackRange:130,  attackSpeed:0.9,  healBonus:15 },
-  dervish:      { classKey:'dervish',      color:'#ddaa44', radius:18, maxHp:520, maxEnergy:35, energyRegen:3, armor:80, speed:105, minDmg:22, maxDmg:34, attackRange:160,  attackSpeed:1.2  },
+  dervish:      { classKey:'dervish',      color:'#ddaa44', radius:18, maxHp:520, maxEnergy:35, energyRegen:3, armor:80, speed:105, minDmg:20, maxDmg:30, attackRange:160,  attackSpeed:1.2  },
   paragon:      { classKey:'paragon',      color:'#ffcc66', radius:17, maxHp:480, maxEnergy:30, energyRegen:4, armor:75, speed:100, minDmg:14, maxDmg:20, attackRange:400,  attackSpeed:1.0  },
 };
 
