@@ -474,6 +474,15 @@ footer {
       <li><strong>WASD contre les murs</strong> : la direction est automatiquement ajustée pour glisser le long des obstacles sans bloquer</li>
     </ul>
 
+    <div class="subsection-title">Ciblage prioritaire</div>
+    <p><kbd>Ctrl+clic gauche</kbd> sur un personnage définit une <strong>cible prioritaire</strong>. Il peut y en avoir une ennemie et une alliée simultanément. Refaire <kbd>Ctrl+clic</kbd> sur la même cible annule le marquage.</p>
+    <ul>
+      <li><strong>Cible ennemie prioritaire</strong> <span style="color:#ff4444">▼</span> : tous les alliés IA concentrent leurs attaques et sorts sur cette cible. Marquée d'un triangle rouge pulsant et d'un anneau rouge au-dessus du sprite.</li>
+      <li><strong>Allié prioritaire</strong> <span style="color:#44ffc8">▲</span> : les soigneurs IA (moines, ritualistes) lui appliquent leurs enchantements protecteurs en priorité (Esprit Protecteur, Gardien, Lien Spirituel) et le soignent avant les autres. Marqué d'un triangle cyan pulsant.</li>
+      <li>Les deux marquages sont indépendants : on peut spike un ennemi tout en protégeant un allié fragile en même temps.</li>
+      <li>Le marquage est automatiquement effacé si la cible meurt. Une nouvelle partie remet les priorités à zéro.</li>
+    </ul>
+
     <div class="subsection-title">Dégâts physiques</div>
     <p>Les dégâts physiques dépendent de l'armure réelle de la cible et d'une éventuelle pénétration d'armure de l'attaquant.</p>
     <div class="formula">raw = minDmg + random(0, maxDmg - minDmg)<br>armor_effective = max(0, target.armor - attacker.armorPen)<br>dmg = raw × 0.5 ^ ((armor_effective - 60) / 40)</div>

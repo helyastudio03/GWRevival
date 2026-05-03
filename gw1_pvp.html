@@ -737,6 +737,8 @@ const REZ_TIME = 15; // secondes avant réapparition au shrine
 function killChar(c, g, msg, killer) {
   if (!c.alive) return;
   c.alive = false; c.hp = 0;
+  if (g.priorityEnemy === c) g.priorityEnemy = null;
+  if (g.priorityAlly   === c) g.priorityAlly   = null;
   c.conditions = {}; c.enchantments = {}; c.hexes = {}; c.casting = null;
   c.queuedSkill = null; c.pendingSkillIdx = null;
   c.rezTimer = REZ_TIME;
@@ -1862,6 +1864,7 @@ const game = {
   floatingTexts: [],
   map: null, flagStand: null,
   spike: null, spikeCooldown: 8,
+  priorityEnemy: null, priorityAlly: null,
   running: false, over: false,
   deathCount: { 0: 0, 1: 0 },
   teamMoraleLevel: { 0: 0, 1: 0 },
@@ -1929,7 +1932,18 @@ document.getElementById('arena').addEventListener('click', e => {
   }
   if (hit) {
     game.player.target = hit;
-    // Don't auto-enable auto-attack or auto-move on click; player controls that via Space
+    if (e.ctrlKey) {
+      e.preventDefault();
+      if (isEnemy(game.player, hit)) {
+        const wasSet = game.priorityEnemy === hit;
+        game.priorityEnemy = wasSet ? null : hit;
+        game.log(wasSet ? `Cible prioritaire ennemie annulée` : `🎯 ${hit.name} → cible prioritaire ennemie`, 'log-sys');
+      } else {
+        const wasSet = game.priorityAlly === hit;
+        game.priorityAlly = wasSet ? null : hit;
+        game.log(wasSet ? `Protection prioritaire alliée annulée` : `🛡 ${hit.name} → allié prioritaire (soin/buff)`, 'log-heal');
+      }
+    }
   } else {
     if (game.player.casting) { game.player.casting = null; game.player.castTimer = 0; }
     game.player.moveTarget = { x: mx, y: my };
@@ -2261,9 +2275,27 @@ function aiUpdate(c, dt, g) {
       if (!hasEnch(c.target, 'spirit_bond'))        tryAiSkill(c, 'mo_spiritbond', g);
     }
 
-    // Find most wounded ally (including self)
+    // Apply proactive protection to the priority ally (if alive and on same team)
+    const prioAlly = g.priorityAlly && g.priorityAlly.alive && g.priorityAlly.team === c.team ? g.priorityAlly : null;
+    if (prioAlly) {
+      const savedTgt = c.target;
+      c.target = prioAlly;
+      if (!hasEnch(prioAlly, 'protective_spirit')) tryAiSkill(c, 'mo_protspirit', g);
+      if (!hasEnch(prioAlly, 'guardian'))           tryAiSkill(c, 'mo_guardian', g);
+      if (!hasEnch(prioAlly, 'spirit_bond'))        tryAiSkill(c, 'mo_spiritbond', g);
+      tryAiSkill(c, 'rt_weaponofwarding', g);
+      c.target = savedTgt;
+    }
+
+    // Find most wounded ally (including self) — priority ally is sorted first if they need healing
     const team = [c, ...allies];
-    team.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
+    team.sort((a, b) => {
+      if (prioAlly) {
+        if (a === prioAlly && a.hp / a.maxHp < 0.95) return -1;
+        if (b === prioAlly && b.hp / b.maxHp < 0.95) return  1;
+      }
+      return (a.hp / a.maxHp) - (b.hp / b.maxHp);
+    });
     const wounded = team.find(x => x.hp / x.maxHp < 0.85);
 
     if (wounded) {
@@ -2288,8 +2320,8 @@ function aiUpdate(c, dt, g) {
       tryAiSkill(c, 'rt_weaponofwarding', g);
       return;
     }
-    // Idle: pre-emptive buffs + light attack pressure
-    const lowestRatio = team.reduce((a, b) => (a.hp / a.maxHp < b.hp / b.maxHp ? a : b));
+    // Idle: pre-emptive buffs on priority ally or lowest-HP ally
+    const lowestRatio = prioAlly || team.reduce((a, b) => (a.hp / a.maxHp < b.hp / b.maxHp ? a : b));
     c.target = lowestRatio;
     tryAiSkill(c, 'mo_guardian', g) || tryAiSkill(c, 'mo_protspirit', g) || tryAiSkill(c, 'mo_spiritbond', g);
     tryAiSkill(c, 'rt_weaponofwarding', g) || tryAiSkill(c, 'rt_splinterweapon', g);
@@ -2319,6 +2351,8 @@ function aiUpdate(c, dt, g) {
     }
     // Spike focus
     if (g.spike && g.spike.target && g.spike.target.alive && !castingHlr) tgt = g.spike.target;
+    // Player priority enemy overrides everything
+    if (g.priorityEnemy && g.priorityEnemy.alive && isEnemy(c, g.priorityEnemy)) tgt = g.priorityEnemy;
     c.target = tgt;
 
     // Point 6: Urgent kiting — flee from melee attackers in contact range
@@ -2359,6 +2393,8 @@ function aiUpdate(c, dt, g) {
       || (g.spike && g.spike.target && g.spike.target.alive ? g.spike.target : null)
       || (playerEnemy && playerEnemy.hp / playerEnemy.maxHp > 0.2 ? playerEnemy : null)
       || enemies.reduce((best, e) => e.hp < best.hp ? e : best, enemies[0]);
+    // Player priority enemy overrides everything
+    if (g.priorityEnemy && g.priorityEnemy.alive && isEnemy(c, g.priorityEnemy)) tgt = g.priorityEnemy;
     c.target = tgt;
 
     // Point 6: Kiting — flee from melee attackers before they reach attack range
@@ -2399,6 +2435,8 @@ function aiUpdate(c, dt, g) {
   // Point 7: Opportunistically switch to casting healers in melee range to interrupt
   const castingHlrNear = enemies.find(e => e.alive && e.casting && e.healBonus && dist(c, e) <= c.attackRange + 80);
   if (castingHlrNear) tgt = castingHlrNear;
+  // Player priority enemy overrides everything
+  if (g.priorityEnemy && g.priorityEnemy.alive && isEnemy(c, g.priorityEnemy)) tgt = g.priorityEnemy;
   c.target = tgt;
 
   const d = dist(c, tgt);
@@ -3412,6 +3450,48 @@ function render() {
       ctx.restore();
     }
 
+    // Priority enemy marker — pulsing red downward triangle + outer ring
+    if (game.priorityEnemy === c) {
+      const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 250);
+      const alpha = 0.75 + pulse * 0.25;
+      const tipY = cy - c.radius - 8;
+      ctx.save();
+      // outer ring
+      ctx.strokeStyle = `rgba(255,60,60,${alpha})`;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(c.x, cy, c.radius + 10 + pulse * 4, 0, Math.PI*2); ctx.stroke();
+      // downward triangle above head
+      ctx.fillStyle = `rgba(255,60,60,${alpha})`;
+      ctx.beginPath();
+      ctx.moveTo(c.x,      tipY - 2);
+      ctx.lineTo(c.x - 9,  tipY - 16);
+      ctx.lineTo(c.x + 9,  tipY - 16);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Priority ally marker — pulsing cyan upward triangle + outer ring
+    if (game.priorityAlly === c) {
+      const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 250);
+      const alpha = 0.75 + pulse * 0.25;
+      const tipY = cy - c.radius - 8;
+      ctx.save();
+      // outer ring
+      ctx.strokeStyle = `rgba(80,255,200,${alpha})`;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(c.x, cy, c.radius + 10 + pulse * 4, 0, Math.PI*2); ctx.stroke();
+      // upward triangle above head
+      ctx.fillStyle = `rgba(80,255,200,${alpha})`;
+      ctx.beginPath();
+      ctx.moveTo(c.x,      tipY - 16);
+      ctx.lineTo(c.x - 9,  tipY - 2);
+      ctx.lineTo(c.x + 9,  tipY - 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
     // Selection ring
     if (isSelected) {
       ctx.save();
@@ -3834,6 +3914,7 @@ function startGame() {
   game.over = false; game.running = false; game.logLines = [];
   game.flagStand = null;
   game.spike = null; game.spikeCooldown = 8;
+  game.priorityEnemy = null; game.priorityAlly = null;
   game.deathCount = { 0: 0, 1: 0 };
   game.teamMoraleLevel = { 0: 0, 1: 0 };
 
