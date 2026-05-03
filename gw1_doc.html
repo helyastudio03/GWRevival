@@ -1600,7 +1600,13 @@ footer {
     <div class="subsection-title">Flocking (séparation des alliés)</div>
     <p>Un vecteur de séparation est calculé à chaque frame dans <code>moveChar</code> pour tous les personnages IA en mouvement. Si deux alliés sont à moins de 55 px l'un de l'autre, une force de répulsion proportionnelle à la proximité (30% du vecteur de déplacement) est ajoutée et le vecteur résultant est renormalisé. Cela évite l'empilement complet de toute l'équipe sur le même point tout en laissant les personnages se regrouper naturellement autour des objectifs.</p>
 
-    <div class="subsection-title">Spike coordonné</div>
+    <div class="subsection-title">Formation (frontline / backline)</div>
+    <p>Chaque allié IA a une <strong>position de formation</strong> calculée à partir du centre de l'équipe et de la direction vers les ennemis. Les classes corps-à-corps (guerrier, assassin, derviche) se positionnent ~200 px <em>en avant</em> du centre d'équipe (frontline). Les casters et classes à distance (élémentaliste, mesmer, nécromant, rôdeur, paragone) se positionnent ~190 px <em>en arrière</em> (backline). La formation s'applique aux déplacements passifs (hors kiting, hors engagement direct) : si un frontliner est isolé à &gt;300 px de tous ses alliés, il se regroupe d'abord avant de rechasser. Les backliners approchent via leur position de formation plutôt que de foncer droit sur les ennemis.</p>
+
+    <div class="subsection-title">Appel de focus IA (allié)</div>
+    <p>Toutes les 10–15 secondes, le coordinateur allié évalue l'état du combat et désigne l'ennemi avec le % de PV le plus faible (sous 90%) comme <strong>cible prioritaire</strong>. Ce marquage utilise le même système que le <kbd>Ctrl+clic</kbd> joueur (triangle rouge pulsant, tous les alliés IA convergent). Si le joueur a déjà défini une priorité ennemie via <kbd>Ctrl+clic</kbd> ou <kbd>Ctrl+Espace</kbd>, l'IA ne la remplace pas.</p>
+
+    <div class="subsection-title">Spike coordonné (IA ennemie)</div>
     <p>Toutes les 12–18 secondes, l'équipe ennemie déclenche un <strong>spike coordonné</strong> : tous les damage dealers IA focalisent la même cible alliée pendant 4 secondes. La priorité est donnée aux healers adverses (Moine, Ritualiste). La cible est signalée visuellement par des <strong>anneaux rouges pulsants</strong> sur le canvas et un message « ⚡ SPIKE » flottant.</p>
 
     <div class="subsection-title">Résurrection (IA Moine / Ritualiste)</div>
@@ -1622,10 +1628,10 @@ footer {
         </td>
       </tr>
       <tr>
-        <td><span class="class-elementalist">Élémentaliste / Nécromant</span></td>
+        <td><span class="class-elementalist">Élémentaliste / Nécromant / Mesmer</span></td>
         <td>
-          Cible l'ennemi avec le moins de PV. Maintient une distance de 250–420 px.<br>
-          Si trop proche (&lt;250 px) : recule. Si trop loin (&gt;420 px) : avance.<br>
+          Cible l'ennemi avec le moins de PV. Maintient une distance de 250–portée px.<br>
+          Si trop proche (&lt;250 px) : recule. Si trop loin : se déplace vers la <strong>position backline</strong> (formation) plutôt que directement vers l'ennemi.<br>
           Cycle tous ses sorts dans l'ordre de priorité (premier disponible utilisé).
         </td>
       </tr>
@@ -1633,9 +1639,9 @@ footer {
         <td><span class="class-ranger">Rôdeur / Paragone</span></td>
         <td>
           Kite les ennemis de mêlée à &lt;200 px (fuite + Sprint si disponible). Distance optimale 65% de la portée d'attaque.<br>
+          Approche via <strong>position backline</strong> si la cible est hors de portée.<br>
           <strong>Tir Distrayant</strong> utilisé immédiatement si la cible est en train d'incanter.<br>
-          Priorité : healer ennemi en train de caster → spike → joueur → ennemi le plus bas.<br>
-          Auto-attaque si hors contact de mêlée et dans la portée.
+          Priorité : healer ennemi en train de caster → spike → joueur → ennemi le plus bas.
         </td>
       </tr>
       <tr>
@@ -1644,7 +1650,8 @@ footer {
           Préfère cibler le joueur si &gt;20% PV, sinon l'ennemi le plus bas.<br>
           Switch sur un healer ennemi en incantation s'il est à portée (interrompre avec <strong>Choc</strong>).<br>
           Se soigne avec Signet de Guérison si &lt;35% PV.<br>
-          Active Sprint si la cible est à &gt;250 px. Auto-attaque dès que dans la portée.
+          Active Sprint si la cible est à &gt;250 px. Auto-attaque dès que dans la portée.<br>
+          Si <strong>isolé</strong> (&gt;300 px de tous ses alliés) : se regroupe d'abord à la position frontline avant de rechasser.
         </td>
       </tr>
       <tr>

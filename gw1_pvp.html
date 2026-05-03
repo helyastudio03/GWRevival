@@ -737,7 +737,7 @@ const REZ_TIME = 15; // secondes avant réapparition au shrine
 function killChar(c, g, msg, killer) {
   if (!c.alive) return;
   c.alive = false; c.hp = 0;
-  if (g.priorityEnemy === c) g.priorityEnemy = null;
+  if (g.priorityEnemy === c) { g.priorityEnemy = null; g.priorityEnemyPlayerSet = false; }
   if (g.priorityAlly   === c) g.priorityAlly   = null;
   c.conditions = {}; c.enchantments = {}; c.hexes = {}; c.casting = null;
   c.queuedSkill = null; c.pendingSkillIdx = null;
@@ -1865,6 +1865,8 @@ const game = {
   map: null, flagStand: null,
   spike: null, spikeCooldown: 8,
   priorityEnemy: null, priorityAlly: null,
+  priorityEnemyPlayerSet: false,
+  allySpikeCd: 6,
   running: false, over: false,
   deathCount: { 0: 0, 1: 0 },
   teamMoraleLevel: { 0: 0, 1: 0 },
@@ -1890,6 +1892,7 @@ function setPriority(c) {
   if (isEnemy(game.player, c)) {
     const wasSet = game.priorityEnemy === c;
     game.priorityEnemy = wasSet ? null : c;
+    game.priorityEnemyPlayerSet = !wasSet;
     game.log(wasSet ? 'Cible prioritaire ennemie annulée' : `🎯 ${c.name} → cible prioritaire ennemie`, 'log-sys');
   } else {
     const wasSet = game.priorityAlly === c;
@@ -2227,6 +2230,27 @@ function hasLOS(ax, ay, bx, by, walls) {
   return true;
 }
 
+// ── FORMATION ─────────────────────────────────────────────────────
+// Returns the ideal resting position for c based on frontline/backline role.
+// Frontline (warrior/assassin/dervish) → ~200px ahead of team center toward enemies.
+// Backline (casters/ranged) → ~190px behind team center, away from enemies.
+function getFormationPos(c, g) {
+  const allies  = g.chars.filter(x => x.alive && x.team === c.team);
+  const enemies = g.chars.filter(x => x.alive && x.team !== c.team);
+  if (allies.length < 2 || !enemies.length) return null;
+  const ax = allies.reduce((s,a)=>s+a.x,0)/allies.length;
+  const ay = allies.reduce((s,a)=>s+a.y,0)/allies.length;
+  const ex = enemies.reduce((s,e)=>s+e.x,0)/enemies.length;
+  const ey = enemies.reduce((s,e)=>s+e.y,0)/enemies.length;
+  const angle = Math.atan2(ey - ay, ex - ax);
+  const front = ['warrior','assassin','dervish'].includes(c.classKey);
+  const offset = front ? 200 : -190;
+  return {
+    x: clamp(ax + Math.cos(angle) * offset, 40, WORLD_W - 40),
+    y: clamp(ay + Math.sin(angle) * offset, 40, WORLD_H - 40),
+  };
+}
+
 // ── AI ────────────────────────────────────────────────────────────
 function aiUpdate(c, dt, g) {
   if (!c.alive || c.isPlayer) return;
@@ -2379,8 +2403,12 @@ function aiUpdate(c, dt, g) {
     } else if (d < 250) {
       const angle = Math.atan2(c.y - tgt.y, c.x - tgt.x);
       c.moveTarget = { x: clamp(tgt.x + Math.cos(angle) * 320, 30, WORLD_W-30), y: clamp(tgt.y + Math.sin(angle) * 320, 30, WORLD_H-30) };
-    } else if (d > 420) {
-      c.moveTarget = { x: clamp(tgt.x + rnd(-60,60), 30, WORLD_W-30), y: clamp(tgt.y + rnd(-60,60), 30, WORLD_H-30) };
+    } else if (d > c.attackRange + 60) {
+      // Formation: move to backline position instead of rushing straight at the enemy
+      const fp = getFormationPos(c, g);
+      c.moveTarget = fp || { x: clamp(tgt.x + rnd(-60,60), 30, WORLD_W-30), y: clamp(tgt.y + rnd(-60,60), 30, WORLD_H-30) };
+    } else {
+      c.moveTarget = null; // hold position at good range
     }
     // Sprint away if melee attacker close and sprint available
     if (meleeAttacker && !hasEnch(c, 'sprint')) tryAiSkill(c, 'w_sprint', g);
@@ -2417,7 +2445,11 @@ function aiUpdate(c, dt, g) {
       const angle = Math.atan2(c.y - meleeAttacker.y, c.x - meleeAttacker.x);
       c.moveTarget = { x: clamp(c.x + Math.cos(angle) * 220, 30, WORLD_W-30), y: clamp(c.y + Math.sin(angle) * 220, 30, WORLD_H-30) };
     } else if (d > c.attackRange + 20) {
-      c.moveTarget = { x: clamp(tgt.x + rnd(-30,30), 30, WORLD_W-30), y: clamp(tgt.y + rnd(-30,30), 30, WORLD_H-30) };
+      // Formation: approach via backline position rather than straight at the enemy
+      const fp = getFormationPos(c, g);
+      c.moveTarget = fp && dist(c, fp) > 80
+        ? fp
+        : { x: clamp(tgt.x + rnd(-30,30), 30, WORLD_W-30), y: clamp(tgt.y + rnd(-30,30), 30, WORLD_H-30) };
     } else if (d < optDist) {
       const angle = Math.atan2(c.y - tgt.y, c.x - tgt.x);
       c.moveTarget = { x: clamp(tgt.x + Math.cos(angle) * (optDist + 50), 30, WORLD_W-30), y: clamp(tgt.y + Math.sin(angle) * (optDist + 50), 30, WORLD_H-30) };
@@ -2454,7 +2486,14 @@ function aiUpdate(c, dt, g) {
   const d = dist(c, tgt);
   const ar = c.attackRange + 20;
   if (d > ar) {
-    c.moveTarget = { x: tgt.x + rnd(-20,20), y: tgt.y + rnd(-20,20) };
+    // Formation: if isolated (no ally within 300px), regroup at frontline position first
+    const nearAlly = allies.find(a => dist(c, a) < 300);
+    if (!nearAlly) {
+      const fp = getFormationPos(c, g);
+      c.moveTarget = fp || { x: tgt.x + rnd(-20,20), y: tgt.y + rnd(-20,20) };
+    } else {
+      c.moveTarget = { x: tgt.x + rnd(-20,20), y: tgt.y + rnd(-20,20) };
+    }
   } else {
     c.moveTarget = null;
   }
@@ -2656,6 +2695,31 @@ function spikeCoordinator(dt, g) {
   addFloat(g, tgt.x, tgt.y - 40, '⚡ SPIKE !', '#ff4400', 16);
 }
 
+// ── ALLY SPIKE CALLER ─────────────────────────────────────────────
+function allySpikeCaller(dt, g) {
+  g.allySpikeCd -= dt;
+  if (g.allySpikeCd > 0 || g.priorityEnemyPlayerSet) return;
+
+  const allies  = g.chars.filter(c => c.team === TEAM_ALLY && c.alive);
+  const enemies = g.chars.filter(c => c.team === TEAM_ENEMY && c.alive);
+  if (allies.filter(a => !a.healBonus).length < 1 || !enemies.length) return;
+
+  // Weakest enemy that isn't at full HP
+  const tgt = enemies.reduce((a, b) => (a.hp / a.maxHp) < (b.hp / b.maxHp) ? a : b);
+  g.allySpikeCd = 10 + Math.random() * 5;
+
+  if (tgt.hp / tgt.maxHp >= 0.90) {
+    // Nobody low enough — clear old AI marker if any
+    if (g.priorityEnemy && !g.priorityEnemyPlayerSet) g.priorityEnemy = null;
+    return;
+  }
+  if (g.priorityEnemy === tgt) return; // already on this target
+
+  g.priorityEnemy = tgt;
+  g.log(`🎯 IA: Focus sur ${tgt.name} !`, 'log-sys');
+  addFloat(g, tgt.x, tgt.y - 38, '🎯 FOCUS', '#ff6644', 14);
+}
+
 // ── UPDATE ────────────────────────────────────────────────────────
 function update(dt) {
   if (!game.running) return;
@@ -2854,8 +2918,9 @@ function update(dt) {
   }
   game.floatingTexts = game.floatingTexts.filter(ft => ft.timer < ft.duration);
 
-  // Spike coordonné (IA ennemie)
+  // Spike coordonné (IA ennemie) + appel focus allié
   spikeCoordinator(dt, game);
+  allySpikeCaller(dt, game);
 
   // Flag Stand update
   if (game.flagStand) updateFlagStand(dt);
@@ -3927,6 +3992,7 @@ function startGame() {
   game.flagStand = null;
   game.spike = null; game.spikeCooldown = 8;
   game.priorityEnemy = null; game.priorityAlly = null;
+  game.priorityEnemyPlayerSet = false; game.allySpikeCd = 6;
   game.deathCount = { 0: 0, 1: 0 };
   game.teamMoraleLevel = { 0: 0, 1: 0 };
 
