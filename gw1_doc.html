@@ -475,11 +475,16 @@ footer {
     </ul>
 
     <div class="subsection-title">Ciblage prioritaire</div>
-    <p><kbd>Ctrl+clic gauche</kbd> sur un personnage définit une <strong>cible prioritaire</strong>. Il peut y en avoir une ennemie et une alliée simultanément. Refaire <kbd>Ctrl+clic</kbd> sur la même cible annule le marquage.</p>
+    <p>Trois façons de marquer une cible comme prioritaire (toggle — même action pour annuler) :</p>
     <ul>
-      <li><strong>Cible ennemie prioritaire</strong> <span style="color:#ff4444">▼</span> : tous les alliés IA concentrent leurs attaques et sorts sur cette cible. Marquée d'un triangle rouge pulsant et d'un anneau rouge au-dessus du sprite.</li>
-      <li><strong>Allié prioritaire</strong> <span style="color:#44ffc8">▲</span> : les soigneurs IA (moines, ritualistes) lui appliquent leurs enchantements protecteurs en priorité (Esprit Protecteur, Gardien, Lien Spirituel) et le soignent avant les autres. Marqué d'un triangle cyan pulsant.</li>
-      <li>Les deux marquages sont indépendants : on peut spike un ennemi tout en protégeant un allié fragile en même temps.</li>
+      <li><kbd>Ctrl+clic gauche</kbd> sur un personnage vivant</li>
+      <li><kbd>Ctrl+Espace</kbd> sur la cible actuellement sélectionnée</li>
+      <li><kbd>Ctrl+1–8</kbd> : cible l'allié du slot ET le marque comme allié prioritaire en même temps</li>
+    </ul>
+    <p>Il peut y avoir une cible ennemie prioritaire et un allié prioritaire simultanément — les deux marquages sont indépendants.</p>
+    <ul>
+      <li><strong>Cible ennemie prioritaire</strong> <span style="color:#ff4444">▼</span> : tous les alliés IA concentrent leurs attaques et sorts sur cette cible. Marquée d'un triangle rouge pulsant + anneau rouge.</li>
+      <li><strong>Allié prioritaire</strong> <span style="color:#44ffc8">▲</span> : les soigneurs IA (moines, ritualistes) lui appliquent Esprit Protecteur, Gardien, Lien Spirituel en priorité et le soignent avant les autres. Marqué d'un triangle cyan pulsant.</li>
       <li>Le marquage est automatiquement effacé si la cible meurt. Une nouvelle partie remet les priorités à zéro.</li>
     </ul>
 

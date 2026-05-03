@@ -1884,6 +1884,20 @@ const game = {
   }
 };
 
+// ── CIBLAGE PRIORITAIRE ──────────────────────────────────────────
+function setPriority(c) {
+  if (!game.player || !c || !c.alive) return;
+  if (isEnemy(game.player, c)) {
+    const wasSet = game.priorityEnemy === c;
+    game.priorityEnemy = wasSet ? null : c;
+    game.log(wasSet ? 'Cible prioritaire ennemie annulée' : `🎯 ${c.name} → cible prioritaire ennemie`, 'log-sys');
+  } else {
+    const wasSet = game.priorityAlly === c;
+    game.priorityAlly = wasSet ? null : c;
+    game.log(wasSet ? 'Protection prioritaire alliée annulée' : `🛡 ${c.name} → allié prioritaire (soin/buff)`, 'log-heal');
+  }
+}
+
 // ── INPUT ─────────────────────────────────────────────────────────
 const keys = {};
 document.addEventListener('keydown', e => {
@@ -1891,13 +1905,22 @@ document.addEventListener('keydown', e => {
   if (!game.running || !game.player) return;
   const p = game.player;
 
-  // Ctrl+1-8: target ally by slot index
   if (e.ctrlKey) {
+    // Ctrl+Space: marque la cible actuelle comme prioritaire (toggle)
+    if (e.code === 'Space') {
+      e.preventDefault();
+      if (p.target && p.target.alive) setPriority(p.target);
+      return;
+    }
+    // Ctrl+1-8: target ally by slot + le marque comme allié prioritaire
     const ai = ['Digit1','Digit2','Digit3','Digit4','Digit5','Digit6','Digit7','Digit8'].indexOf(e.code);
     if (ai >= 0) {
       e.preventDefault();
       const allyList = game.chars.filter(c => c.team === TEAM_ALLY && c.alive);
-      if (allyList[ai]) { p.target = allyList[ai]; }
+      if (allyList[ai]) {
+        p.target = allyList[ai];
+        setPriority(allyList[ai]);
+      }
       return;
     }
   }
@@ -1932,18 +1955,7 @@ document.getElementById('arena').addEventListener('click', e => {
   }
   if (hit) {
     game.player.target = hit;
-    if (e.ctrlKey) {
-      e.preventDefault();
-      if (isEnemy(game.player, hit)) {
-        const wasSet = game.priorityEnemy === hit;
-        game.priorityEnemy = wasSet ? null : hit;
-        game.log(wasSet ? `Cible prioritaire ennemie annulée` : `🎯 ${hit.name} → cible prioritaire ennemie`, 'log-sys');
-      } else {
-        const wasSet = game.priorityAlly === hit;
-        game.priorityAlly = wasSet ? null : hit;
-        game.log(wasSet ? `Protection prioritaire alliée annulée` : `🛡 ${hit.name} → allié prioritaire (soin/buff)`, 'log-heal');
-      }
-    }
+    if (e.ctrlKey) { e.preventDefault(); setPriority(hit); }
   } else {
     if (game.player.casting) { game.player.casting = null; game.player.castTimer = 0; }
     game.player.moveTarget = { x: mx, y: my };
